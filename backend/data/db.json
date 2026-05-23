@@ -1,0 +1,133 @@
+{
+  "users": [
+    { "id": "usr-001", "username": "admin", "password": "admin123", "role": "admin", "name": "Nguyễn Văn Quản Lý" },
+    { "id": "usr-002", "username": "tech1", "password": "tech123", "role": "technician", "name": "Trần Minh Kỹ Thuật" },
+    { "id": "usr-003", "username": "tech2", "password": "tech123", "role": "technician", "name": "Lê Anh Tuấn (KTV)" },
+    { "id": "usr-004", "username": "customer", "password": "customer123", "role": "customer", "name": "Phạm Hoàng Nam" }
+  ],
+  "inventory": [
+    { "id": "cpu-001", "name": "Intel Core i3-12100F", "category": "cpu", "price": 2150000, "stock": 15, "minStock": 5, "specs": { "socket": "LGA1700", "power": 65 } },
+    { "id": "cpu-002", "name": "Intel Core i5-12400F", "category": "cpu", "price": 3490000, "stock": 12, "minStock": 4, "specs": { "socket": "LGA1700", "power": 65 } },
+    { "id": "cpu-003", "name": "Intel Core i5-13400F", "category": "cpu", "price": 5290000, "stock": 8, "minStock": 3, "specs": { "socket": "LGA1700", "power": 65 } },
+    { "id": "cpu-004", "name": "AMD Ryzen 5 7600", "category": "cpu", "price": 5450000, "stock": 6, "minStock": 2, "specs": { "socket": "AM5", "power": 65 } },
+    { "id": "cpu-005", "name": "AMD Ryzen 7 7800X3D", "category": "cpu", "price": 10500000, "stock": 3, "minStock": 2, "specs": { "socket": "AM5", "power": 120 } },
+    
+    { "id": "mb-001", "name": "MSI PRO H610M-E DDR4", "category": "mainboard", "price": 1850000, "stock": 10, "minStock": 3, "specs": { "socket": "LGA1700", "ramType": "DDR4" } },
+    { "id": "mb-002", "name": "ASUS PRIME B760M-A WIFI DDR4", "category": "mainboard", "price": 3150000, "stock": 7, "minStock": 3, "specs": { "socket": "LGA1700", "ramType": "DDR4" } },
+    { "id": "mb-003", "name": "GIGABYTE B760M GAMING X AX DDR5", "category": "mainboard", "price": 4200000, "stock": 5, "minStock": 2, "specs": { "socket": "LGA1700", "ramType": "DDR5" } },
+    { "id": "mb-004", "name": "MSI PRO B650M-A WIFI DDR5", "category": "mainboard", "price": 4390000, "stock": 4, "minStock": 2, "specs": { "socket": "AM5", "ramType": "DDR5" } },
+    { "id": "mb-005", "name": "ASUS ROG STRIX B650-A GAMING WIFI", "category": "mainboard", "price": 6250000, "stock": 2, "minStock": 1, "specs": { "socket": "AM5", "ramType": "DDR5" } },
+
+    { "id": "ram-001", "name": "Kingston FURY Beast 8GB DDR4 3200MHz", "category": "ram", "price": 590000, "stock": 30, "minStock": 10, "specs": { "ramType": "DDR4", "capacity": "8GB" } },
+    { "id": "ram-002", "name": "Kingston FURY Beast 16GB (2x8GB) DDR4 3200MHz", "category": "ram", "price": 1150000, "stock": 25, "minStock": 8, "specs": { "ramType": "DDR4", "capacity": "16GB" } },
+    { "id": "ram-003", "name": "Corsair Vengeance LPX 16GB DDR4 3200MHz", "category": "ram", "price": 1090000, "stock": 18, "minStock": 5, "specs": { "ramType": "DDR4", "capacity": "16GB" } },
+    { "id": "ram-004", "name": "Kingston FURY Beast 16GB DDR5 5600MHz", "category": "ram", "price": 1550000, "stock": 12, "minStock": 4, "specs": { "ramType": "DDR5", "capacity": "16GB" } },
+    { "id": "ram-005", "name": "Corsair Vengeance RGB 32GB (2x16GB) DDR5 6000MHz", "category": "ram", "price": 3390000, "stock": 8, "minStock": 3, "specs": { "ramType": "DDR5", "capacity": "32GB" } },
+
+    { "id": "vga-001", "name": "MSI GeForce GTX 1650 D6 AERO ITX 4G", "category": "vga", "price": 3650000, "stock": 6, "minStock": 2, "specs": { "power": 75 } },
+    { "id": "vga-002", "name": "ASUS Dual GeForce RTX 3050 V2 8GB", "category": "vga", "price": 5890000, "stock": 8, "minStock": 3, "specs": { "power": 130 } },
+    { "id": "vga-003", "name": "GIGABYTE GeForce RTX 4060 WINDFORCE OC 8G", "category": "vga", "price": 8190000, "stock": 10, "minStock": 3, "specs": { "power": 115 } },
+    { "id": "vga-004", "name": "MSI GeForce RTX 4060 Ti VENTUS 2X Black 8G OC", "category": "vga", "price": 11450000, "stock": 5, "minStock": 2, "specs": { "power": 160 } },
+    { "id": "vga-005", "name": "ASUS TUF Gaming GeForce RTX 4070 SUPER 12GB", "category": "vga", "price": 19490000, "stock": 3, "minStock": 1, "specs": { "power": 220 } },
+
+    { "id": "psu-001", "name": "Antec Atom V550 550W", "category": "psu", "price": 690000, "stock": 14, "minStock": 5, "specs": { "wattage": 550 } },
+    { "id": "psu-002", "name": "MSI MAG A650BN 650W 80 Plus Bronze", "category": "psu", "price": 1350000, "stock": 11, "minStock": 4, "specs": { "wattage": 650 } },
+    { "id": "psu-003", "name": "Corsair CV750 750W 80 Plus Bronze", "category": "psu", "price": 1790000, "stock": 8, "minStock": 3, "specs": { "wattage": 750 } },
+    { "id": "psu-004", "name": "MSI MAG A850GL 850W PCIe 5.0 80 Plus Gold", "category": "psu", "price": 2990000, "stock": 4, "minStock": 2, "specs": { "wattage": 850 } },
+
+    { "id": "ssd-001", "name": "Kingston A400 240GB 2.5 inch SATA3", "category": "ssd", "price": 550000, "stock": 25, "minStock": 8, "specs": { "capacity": "240GB" } },
+    { "id": "ssd-002", "name": "Samsung 980 500GB M.2 NVMe PCIe Gen3", "category": "ssd", "price": 1290000, "stock": 16, "minStock": 5, "specs": { "capacity": "500GB" } },
+    { "id": "ssd-003", "name": "Kingston NV2 1TB M.2 PCIe Gen4 x4 NVMe", "category": "ssd", "price": 1690000, "stock": 20, "minStock": 6, "specs": { "capacity": "1TB" } },
+    { "id": "ssd-004", "name": "Samsung 990 PRO 1TB M.2 NVMe PCIe Gen4 x4", "category": "ssd", "price": 2890000, "stock": 6, "minStock": 2, "specs": { "capacity": "1TB" } },
+
+    { "id": "case-001", "name": "Xigmatek XA-22 Văn phòng", "category": "case", "price": 320000, "stock": 15, "minStock": 4, "specs": {} },
+    { "id": "case-002", "name": "Xigmatek NYX 3F (Kèm 3 Fan RGB)", "category": "case", "price": 650000, "stock": 12, "minStock": 4, "specs": {} },
+    { "id": "case-003", "name": "Montech AIR 100 LITE Black (Kèm 2 Fan)", "category": "case", "price": 950000, "stock": 8, "minStock": 2, "specs": {} },
+
+    { "id": "cam-001", "name": "Camera IP Dome Dahua 2.0MP (Trong nhà)", "category": "camera", "price": 650000, "stock": 45, "minStock": 10, "specs": { "type": "IP", "environment": "indoor", "resolution": "1080p" } },
+    { "id": "cam-002", "name": "Camera IP Thân Dahua 2.0MP (Ngoài trời)", "category": "camera", "price": 750000, "stock": 35, "minStock": 10, "specs": { "type": "IP", "environment": "outdoor", "resolution": "1080p" } },
+    { "id": "cam-003", "name": "Camera IP Dome Hikvision 4.0MP 2K (Trong nhà)", "category": "camera", "price": 1150000, "stock": 20, "minStock": 5, "specs": { "type": "IP", "environment": "indoor", "resolution": "2K" } },
+    { "id": "cam-004", "name": "Camera IP Thân Hikvision 4.0MP 2K (Ngoài trời)", "category": "camera", "price": 1250000, "stock": 18, "minStock": 5, "specs": { "type": "IP", "environment": "outdoor", "resolution": "2K" } },
+    { "id": "cam-005", "name": "Camera IP Thân Hikvision 8.0MP 4K siêu sắc nét", "category": "camera", "price": 2450000, "stock": 8, "minStock": 2, "specs": { "type": "IP", "environment": "outdoor", "resolution": "4K" } },
+    { "id": "cam-006", "name": "Camera Analog Dahua 2.0MP giá rẻ", "category": "camera", "price": 380000, "stock": 50, "minStock": 15, "specs": { "type": "Analog", "environment": "indoor", "resolution": "1080p" } },
+
+    { "id": "dvr-001", "name": "Đầu ghi IP Hikvision 4 kênh Poe", "category": "dvr", "price": 1850000, "stock": 10, "minStock": 3, "specs": { "channels": 4, "type": "IP" } },
+    { "id": "dvr-002", "name": "Đầu ghi IP Hikvision 8 kênh", "category": "dvr", "price": 2650000, "stock": 8, "minStock": 2, "specs": { "channels": 8, "type": "IP" } },
+    { "id": "dvr-003", "name": "Đầu ghi Analog Dahua 4 kênh", "category": "dvr", "price": 1100000, "stock": 12, "minStock": 3, "specs": { "channels": 4, "type": "Analog" } },
+    { "id": "dvr-004", "name": "Đầu ghi Analog Dahua 8 kênh", "category": "dvr", "price": 1650000, "stock": 9, "minStock": 3, "specs": { "channels": 8, "type": "Analog" } },
+
+    { "id": "hdd-001", "name": "Ổ cứng chuyên dụng Camera Seagate Skyhawk 1TB", "category": "hdd", "price": 1250000, "stock": 15, "minStock": 5, "specs": { "capacity": "1TB" } },
+    { "id": "hdd-002", "name": "Ổ cứng chuyên dụng Camera Seagate Skyhawk 2TB", "category": "hdd", "price": 1850000, "stock": 10, "minStock": 4, "specs": { "capacity": "2TB" } },
+    { "id": "hdd-003", "name": "Ổ cứng chuyên dụng WD Purple 4TB", "category": "hdd", "price": 3150000, "stock": 5, "minStock": 2, "specs": { "capacity": "4TB" } },
+
+    { "id": "cab-001", "name": "Cáp đồng trục kèm nguồn RG59 (Cuộn 100m)", "category": "cable", "price": 650000, "stock": 14, "minStock": 4, "specs": { "length": 100 } },
+    { "id": "cab-002", "name": "Cáp mạng CAT6 UTP bấm sẵn (Cuộn 100m)", "category": "cable", "price": 550000, "stock": 20, "minStock": 5, "specs": { "length": 100 } },
+
+    { "id": "acc-001", "name": "Hộp mực máy in Canon Cartridge 303 (LBP2900)", "category": "accessories", "price": 250000, "stock": 2, "minStock": 5, "specs": {} },
+    { "id": "acc-002", "name": "Keo tản nhiệt CPU MX-4", "category": "accessories", "price": 120000, "stock": 30, "minStock": 5, "specs": {} },
+    { "id": "acc-003", "name": "Jack BNC + F5 cho Camera Analog (Bộ 10 cái)", "category": "accessories", "price": 50000, "stock": 60, "minStock": 10, "specs": {} },
+    { "id": "acc-004", "name": "Hạt mạng RJ45 AMP sắt (Hộp 100 hạt)", "category": "accessories", "price": 150000, "stock": 12, "minStock": 3, "specs": {} }
+  ],
+  "repairs": [
+    {
+      "id": "REP-1001",
+      "customerName": "Trần Văn Hùng",
+      "customerPhone": "0912345678",
+      "deviceType": "pc",
+      "deviceName": "PC Gaming Intel Core i3",
+      "issueDescription": "Máy khởi động lên đèn quạt quay nhưng không lên màn hình. Thỉnh thoảng nghe tiếng tít tít dài.",
+      "status": "fixing",
+      "assignedTechId": "tech1",
+      "history": [
+        { "status": "received", "timestamp": "2026-05-23T08:00:00.000Z", "note": "Tiếp nhận máy từ khách hàng tại cửa hàng. Giao cho kỹ thuật viên Trần Minh kiểm tra." },
+        { "status": "inspecting", "timestamp": "2026-05-23T09:30:00.000Z", "note": "KTV kiểm tra: Máy lỗi RAM do chân RAM bám bụi và oxy hóa. Đã làm sạch và test thử lại lên bình thường. Đề xuất vệ sinh máy và tra keo tản nhiệt." },
+        { "status": "fixing", "timestamp": "2026-05-23T10:15:00.000Z", "note": "Đang tiến hành vệ sinh thùng máy, quét bụi, bôi keo tản nhiệt MX-4 cho CPU." }
+      ],
+      "partsUsed": [
+        { "id": "acc-002", "name": "Keo tản nhiệt CPU MX-4", "qty": 1, "price": 120000 }
+      ],
+      "serviceFee": 150000,
+      "totalPrice": 270000,
+      "createdAt": "2026-05-23T08:00:00.000Z"
+    },
+    {
+      "id": "REP-1002",
+      "customerName": "Nguyễn Thị Mai",
+      "customerPhone": "0987654321",
+      "deviceType": "printer",
+      "deviceName": "Canon LBP 2900",
+      "issueDescription": "In ra giấy có vệt đen dọc trang rất đậm, chữ mờ nhòe.",
+      "status": "completed",
+      "assignedTechId": "tech2",
+      "history": [
+        { "status": "received", "timestamp": "2026-05-22T14:20:00.000Z", "note": "Nhận máy in Canon 2900 của chị Mai báo lỗi vệt đen dọc giấy." },
+        { "status": "inspecting", "timestamp": "2026-05-22T15:00:00.000Z", "note": "Hộp mực cũ đã hỏng trống (drum) và gạt mực, mực thải tràn. Cần thay hộp mực mới Cartridge 303." },
+        { "status": "fixing", "timestamp": "2026-05-22T15:30:00.000Z", "note": "Đã tiến hành bóc hộp mực Cartridge 303 mới lắp vào máy, lau trục cuốn giấy, hút bụi máy in." },
+        { "status": "completed", "timestamp": "2026-05-22T16:00:00.000Z", "note": "Test in thử 10 trang cực kỳ sắc nét, máy chạy êm. Đã bàn giao lại cho khách và xuất hóa đơn." }
+      ],
+      "partsUsed": [
+        { "id": "acc-001", "name": "Hộp mực máy in Canon Cartridge 303 (LBP2900)", "qty": 1, "price": 250000 }
+      ],
+      "serviceFee": 100000,
+      "totalPrice": 350000,
+      "createdAt": "2026-05-22T14:20:00.000Z"
+    },
+    {
+      "id": "REP-1003",
+      "customerName": "Lê Văn Tuyên",
+      "customerPhone": "0905123456",
+      "deviceType": "laptop",
+      "deviceName": "Dell Vostro 3510",
+      "issueDescription": "Máy khởi động báo No Bootable Device, ổ cứng HDD cũ có tiếng kêu cạch cạch.",
+      "status": "received",
+      "assignedTechId": null,
+      "history": [
+        { "status": "received", "timestamp": "2026-05-23T11:10:00.000Z", "note": "Nhận máy Dell Vostro báo lỗi ổ cứng. Khách yêu cầu thay ổ SSD tốc độ cao và cài lại hệ điều hành Win 11." }
+      ],
+      "partsUsed": [],
+      "serviceFee": 200000,
+      "totalPrice": 200000,
+      "createdAt": "2026-05-23T11:10:00.000Z"
+    }
+  ]
+}

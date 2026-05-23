@@ -1,221 +1,211 @@
 import express from 'express';
-import { dbService } from '../services/dbService.js';
+import Repair from '../models/Repair.js';
+import Inventory from '../models/Inventory.js';
+import User from '../models/User.js';
 
 const router = express.Router();
 
-// Get all repairs
-router.get('/', (req, res) => {
-  const repairs = dbService.getCollection('repairs');
-  res.json(repairs);
-});
-
-// Get repair by ID
-router.get('/:id', (req, res) => {
-  const repair = dbService.getById('repairs', req.params.id);
-  if (!repair) {
-    return res.status(404).json({ message: 'Không tìm thấy phiếu sửa chữa' });
+// GET all repairs
+router.get('/', async (req, res) => {
+  try {
+    const repairs = await Repair.find().sort({ createdAt: -1 });
+    res.json(repairs);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi tải danh sách phiếu sửa chữa', error: err.message });
   }
-  res.json(repair);
 });
 
-// Get repairs by customer phone (for tracking)
-router.get('/customer/:phone', (req, res) => {
-  const { phone } = req.params;
-  const repairs = dbService.getCollection('repairs');
-  const filtered = repairs.filter(r => r.customerPhone === phone);
-  res.json(filtered);
-});
-
-// Book a repair (Customer)
-router.post('/book', (req, res) => {
-  const { customerName, customerPhone, deviceType, deviceName, issueDescription } = req.body;
-  if (!customerName || !customerPhone || !deviceType || !issueDescription) {
-    return res.status(400).json({ message: 'Thiếu thông tin đặt lịch hẹn' });
+// GET repair by repairCode (e.g. REP-1001)
+router.get('/code/:code', async (req, res) => {
+  try {
+    const repair = await Repair.findOne({ repairCode: req.params.code.toUpperCase() });
+    if (!repair) return res.status(404).json({ message: 'Không tìm thấy phiếu sửa chữa' });
+    res.json(repair);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi tải phiếu sửa chữa', error: err.message });
   }
+});
 
-  const newRepair = {
-    customerName,
-    customerPhone,
-    deviceType,
-    deviceName: deviceName || 'Thiết bị không rõ model',
-    issueDescription,
-    status: 'received',
-    assignedTechId: null,
-    history: [
-      {
+// GET repairs by customer phone
+router.get('/customer/:phone', async (req, res) => {
+  try {
+    const repairs = await Repair.find({ customerPhone: req.params.phone }).sort({ createdAt: -1 });
+    res.json(repairs);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi tìm kiếm theo số điện thoại', error: err.message });
+  }
+});
+
+// GET repairs by technician ID
+router.get('/tech/:techId', async (req, res) => {
+  try {
+    const repairs = await Repair.find({ assignedTechId: req.params.techId }).sort({ createdAt: -1 });
+    res.json(repairs);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi tải công việc kỹ thuật viên', error: err.message });
+  }
+});
+
+// GET repair by MongoDB ObjectId
+router.get('/:id', async (req, res) => {
+  try {
+    const repair = await Repair.findById(req.params.id);
+    if (!repair) return res.status(404).json({ message: 'Không tìm thấy phiếu sửa chữa' });
+    res.json(repair);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi tải phiếu sửa chữa', error: err.message });
+  }
+});
+
+// POST book new repair
+router.post('/book', async (req, res) => {
+  try {
+    const { customerName, customerPhone, deviceType, deviceName, issueDescription } = req.body;
+    if (!customerName || !customerPhone || !deviceType || !issueDescription) {
+      return res.status(400).json({ message: 'Thiếu thông tin đặt lịch hẹn' });
+    }
+
+    const repair = new Repair({
+      customerName,
+      customerPhone,
+      deviceType,
+      deviceName: deviceName || 'Thiết bị không rõ model',
+      issueDescription,
+      status: 'received',
+      history: [{
         status: 'received',
-        timestamp: new Date().toISOString(),
+        timestamp: new Date(),
         note: 'Hệ thống tiếp nhận yêu cầu đặt lịch hẹn sửa chữa trực tuyến của khách hàng.'
-      }
-    ],
-    partsUsed: [],
-    serviceFee: 150000, // Standard fee
-    totalPrice: 150000,
-    createdAt: new Date().toISOString()
-  };
-
-  const inserted = dbService.insert('repairs', newRepair);
-  res.status(201).json(inserted);
-});
-
-// Assign technician
-router.patch('/:id/assign', (req, res) => {
-  const { id } = req.params;
-  const { techId } = req.body;
-
-  const repair = dbService.getById('repairs', id);
-  if (!repair) {
-    return res.status(404).json({ message: 'Không tìm thấy phiếu sửa chữa' });
-  }
-
-  const users = dbService.getCollection('users');
-  const tech = users.find(u => u.id === techId && u.role === 'technician');
-  const techName = tech ? tech.name : 'Kỹ thuật viên';
-
-  const currentHistory = repair.history || [];
-  const updatedHistory = [
-    ...currentHistory,
-    {
-      status: repair.status,
-      timestamp: new Date().toISOString(),
-      note: `Đã phân phối công việc cho Kỹ thuật viên: ${techName}.`
-    }
-  ];
-
-  const updated = dbService.update('repairs', id, {
-    assignedTechId: techId,
-    history: updatedHistory
-  });
-
-  res.json(updated);
-});
-
-// Update repair status
-router.patch('/:id/status', (req, res) => {
-  const { id } = req.params;
-  const { status, note } = req.body;
-
-  const repair = dbService.getById('repairs', id);
-  if (!repair) {
-    return res.status(404).json({ message: 'Không tìm thấy phiếu sửa chữa' });
-  }
-
-  const validStatuses = ['received', 'inspecting', 'fixing', 'completed'];
-  if (!validStatuses.includes(status)) {
-    return res.status(400).json({ message: 'Trạng thái sửa chữa không hợp lệ' });
-  }
-
-  const currentHistory = repair.history || [];
-  const updatedHistory = [
-    ...currentHistory,
-    {
-      status,
-      timestamp: new Date().toISOString(),
-      note: note || `Cập nhật trạng thái phiếu sửa chữa sang: ${status.toUpperCase()}.`
-    }
-  ];
-
-  const updated = dbService.update('repairs', id, {
-    status,
-    history: updatedHistory
-  });
-
-  res.json(updated);
-});
-
-// Add replacement part
-router.post('/:id/parts', (req, res) => {
-  const { id } = req.params;
-  const { partId, qty } = req.body;
-
-  const repair = dbService.getById('repairs', id);
-  if (!repair) {
-    return res.status(404).json({ message: 'Không tìm thấy phiếu sửa chữa' });
-  }
-
-  const inventoryItem = dbService.getById('inventory', partId);
-  if (!inventoryItem) {
-    return res.status(404).json({ message: 'Không tìm thấy linh kiện trong kho' });
-  }
-
-  const quantity = Number(qty || 1);
-  if (inventoryItem.stock < quantity) {
-    return res.status(400).json({ message: `Lượng tồn kho không đủ (Hiện tại: ${inventoryItem.stock})` });
-  }
-
-  // Deduct from inventory
-  dbService.update('inventory', partId, { stock: inventoryItem.stock - quantity });
-
-  // Add to partsUsed
-  const partsUsed = repair.partsUsed || [];
-  const existingPartIndex = partsUsed.findIndex(p => p.id === partId);
-
-  if (existingPartIndex > -1) {
-    partsUsed[existingPartIndex].qty += quantity;
-    partsUsed[existingPartIndex].total = partsUsed[existingPartIndex].qty * partsUsed[existingPartIndex].price;
-  } else {
-    partsUsed.push({
-      id: partId,
-      name: inventoryItem.name,
-      qty: quantity,
-      price: inventoryItem.price,
-      total: quantity * inventoryItem.price
+      }],
+      serviceFee: 150000,
+      totalPrice: 150000
     });
+
+    await repair.save();
+    res.status(201).json(repair);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi đặt lịch sửa chữa', error: err.message });
   }
-
-  // Calculate new total
-  const partsCost = partsUsed.reduce((sum, p) => sum + (p.price * p.qty), 0);
-  const serviceFee = repair.serviceFee || 150000;
-  const totalPrice = partsCost + serviceFee;
-
-  const updatedHistory = [
-    ...(repair.history || []),
-    {
-      status: repair.status,
-      timestamp: new Date().toISOString(),
-      note: `KTV đã bổ sung linh kiện thay thế: ${inventoryItem.name} (Số lượng: ${quantity}).`
-    }
-  ];
-
-  const updated = dbService.update('repairs', id, {
-    partsUsed,
-    totalPrice,
-    history: updatedHistory
-  });
-
-  res.json(updated);
 });
 
-// Update service fee & generate final bill
-router.patch('/:id/finalize', (req, res) => {
-  const { id } = req.params;
-  const { serviceFee } = req.body;
+// PATCH assign technician
+router.patch('/:id/assign', async (req, res) => {
+  try {
+    const { techId } = req.body;
+    const repair = await Repair.findById(req.params.id);
+    if (!repair) return res.status(404).json({ message: 'Không tìm thấy phiếu sửa chữa' });
 
-  const repair = dbService.getById('repairs', id);
-  if (!repair) {
-    return res.status(404).json({ message: 'Không tìm thấy phiếu sửa chữa' });
-  }
+    const tech = await User.findById(techId);
+    const techName = tech ? tech.name : 'Kỹ thuật viên';
 
-  const fee = Number(serviceFee !== undefined ? serviceFee : repair.serviceFee);
-  const partsCost = (repair.partsUsed || []).reduce((sum, p) => sum + (p.price * p.qty), 0);
-  const totalPrice = partsCost + fee;
-
-  const updatedHistory = [
-    ...(repair.history || []),
-    {
+    repair.assignedTechId = techId;
+    repair.history.push({
       status: repair.status,
-      timestamp: new Date().toISOString(),
-      note: `Chi phí dịch vụ được điều chỉnh thành ${fee.toLocaleString()}đ. Xuất hóa đơn tổng trị giá ${totalPrice.toLocaleString()}đ.`
+      timestamp: new Date(),
+      note: `Đã phân phối công việc cho Kỹ thuật viên: ${techName}.`
+    });
+
+    await repair.save();
+    res.json(repair);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi phân công kỹ thuật viên', error: err.message });
+  }
+});
+
+// PATCH update repair status
+router.patch('/:id/status', async (req, res) => {
+  try {
+    const { status, note } = req.body;
+    const validStatuses = ['received', 'inspecting', 'fixing', 'completed'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Trạng thái sửa chữa không hợp lệ' });
     }
-  ];
 
-  const updated = dbService.update('repairs', id, {
-    serviceFee: fee,
-    totalPrice,
-    history: updatedHistory
-  });
+    const repair = await Repair.findById(req.params.id);
+    if (!repair) return res.status(404).json({ message: 'Không tìm thấy phiếu sửa chữa' });
 
-  res.json(updated);
+    repair.status = status;
+    repair.history.push({
+      status,
+      timestamp: new Date(),
+      note: note || `Cập nhật trạng thái: ${status.toUpperCase()}`
+    });
+
+    await repair.save();
+    res.json(repair);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi cập nhật trạng thái', error: err.message });
+  }
+});
+
+// POST add replacement part to repair
+router.post('/:id/parts', async (req, res) => {
+  try {
+    const { partId, qty } = req.body;
+    const quantity = Number(qty || 1);
+
+    const repair = await Repair.findById(req.params.id);
+    if (!repair) return res.status(404).json({ message: 'Không tìm thấy phiếu sửa chữa' });
+
+    const part = await Inventory.findById(partId);
+    if (!part) return res.status(404).json({ message: 'Không tìm thấy linh kiện trong kho' });
+
+    if (part.stock < quantity) {
+      return res.status(400).json({ message: `Tồn kho không đủ (Hiện có: ${part.stock})` });
+    }
+
+    // Deduct stock
+    part.stock -= quantity;
+    await part.save();
+
+    // Update or add to partsUsed
+    const existingIdx = repair.partsUsed.findIndex(p => p.inventoryId?.toString() === partId);
+    if (existingIdx > -1) {
+      repair.partsUsed[existingIdx].qty += quantity;
+    } else {
+      repair.partsUsed.push({ inventoryId: part._id, name: part.name, qty: quantity, price: part.price });
+    }
+
+    // Recalculate total
+    const partsCost = repair.partsUsed.reduce((sum, p) => sum + p.price * p.qty, 0);
+    repair.totalPrice = partsCost + repair.serviceFee;
+
+    repair.history.push({
+      status: repair.status,
+      timestamp: new Date(),
+      note: `KTV bổ sung linh kiện thay thế: ${part.name} (SL: ${quantity}).`
+    });
+
+    await repair.save();
+    res.json(repair);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi thêm linh kiện vào phiếu', error: err.message });
+  }
+});
+
+// PATCH finalize bill
+router.patch('/:id/finalize', async (req, res) => {
+  try {
+    const { serviceFee } = req.body;
+    const repair = await Repair.findById(req.params.id);
+    if (!repair) return res.status(404).json({ message: 'Không tìm thấy phiếu sửa chữa' });
+
+    const fee = Number(serviceFee !== undefined ? serviceFee : repair.serviceFee);
+    const partsCost = repair.partsUsed.reduce((sum, p) => sum + p.price * p.qty, 0);
+
+    repair.serviceFee = fee;
+    repair.totalPrice = partsCost + fee;
+    repair.history.push({
+      status: repair.status,
+      timestamp: new Date(),
+      note: `Chốt hóa đơn: Phí công ${fee.toLocaleString()}đ. Tổng: ${repair.totalPrice.toLocaleString()}đ.`
+    });
+
+    await repair.save();
+    res.json(repair);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi chốt hóa đơn', error: err.message });
+  }
 });
 
 export default router;

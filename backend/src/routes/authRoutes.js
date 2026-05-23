@@ -1,26 +1,27 @@
 import express from 'express';
-import { dbService } from '../services/dbService.js';
+import User from '../models/User.js';
 
 const router = express.Router();
 
-router.post('/login', (req, res) => {
-  const { username, password } = req.body;
-  const users = dbService.getCollection('users');
-  
-  const user = users.find(u => u.username === username && u.password === password);
-  if (!user) {
-    return res.status(401).json({ message: 'Tên đăng nhập hoặc mật khẩu không chính xác' });
-  }
+router.post('/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username, password });
 
-  // Generate a mock token
-  const token = `mock-jwt-token-for-${user.id}-${user.role}`;
-  res.json({
-    id: user.id,
-    username: user.username,
-    role: user.role,
-    name: user.name,
-    token
-  });
+    if (!user) {
+      return res.status(401).json({ message: 'Tên đăng nhập hoặc mật khẩu không chính xác' });
+    }
+
+    res.json({
+      id: user._id,
+      username: user.username,
+      role: user.role,
+      name: user.name,
+      token: `mock-jwt-${user._id}-${user.role}`
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi hệ thống', error: err.message });
+  }
 });
 
 export default router;

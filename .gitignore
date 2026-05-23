@@ -26,9 +26,10 @@ yarn-debug.log*
 yarn-error.log*
 *.log
 
-# Local environment variables
+# Local environment variables (DO NOT COMMIT - Contains DB credentials)
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+backend/.env

@@ -6,6 +6,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/sanpha
 
 function mapCategoryToKeyword(cat) {
   if (!cat) return '';
+  if (typeof cat === 'object' && cat.name) cat = cat.name;
   const c = String(cat).toLowerCase();
   if (c.includes('cpu')) return 'cpu,processor';
   if (c.includes('main') || c.includes('board')) return 'motherboard';
@@ -69,7 +70,7 @@ async function run() {
   await mongoose.connect(MONGODB_URI);
   console.log('✅ Connected');
 
-  const products = await Product.find({}).lean();
+  const products = await Product.find({}).populate('category').lean();
   console.log(`ℹ️ Found ${products.length} products. Updating images...`);
 
   let updated = 0;

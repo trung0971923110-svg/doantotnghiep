@@ -1,35 +1,55 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Cpu, Wrench, Video, ShieldAlert, CheckCircle, Clock } from 'lucide-react';
 
 // Helper to format prices
 const fmt = (v) => v ? v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '₫' : 'Liên hệ';
 const placeholderFor = (name) => `/images/placeholder.svg`;
 
-export default function Home({ setPage }) {
+export default function Home({ setPage, selectedCategory, setSelectedCategory, setSelectedProductId, setSelectedSuggestion, selectedBrand, setSelectedBrand }) {
   const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const featuredRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const res = await fetch('/api/pc-builder/products');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled) {
-          setProducts(data);
-          // Extract unique categories
-          const cats = [...new Set(data.map(p => p.category).filter(Boolean))];
-          setCategories(cats);
+        setLoadingProducts(true);
+        const parts = [];
+        if (selectedCategory) parts.push(`category=${encodeURIComponent(selectedCategory)}`);
+        // server-side brand filter when viewing CPU category
+        if (selectedCategory === 'cpu' && selectedBrand && selectedBrand !== 'all') parts.push(`brand=${encodeURIComponent(selectedBrand)}`);
+        const q = parts.length ? `?${parts.join('&')}` : '';
+        const res = await fetch('/api/pc-builder/products' + q);
+        if (!res.ok) {
+          setProducts([]);
+          return;
         }
+        const data = await res.json();
+        if (!cancelled) setProducts(data);
       } catch (e) {
         console.warn('Failed to load products', e);
+        if (!cancelled) setProducts([]);
+      } finally {
+        if (!cancelled) setLoadingProducts(false);
       }
     }
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [selectedCategory, selectedBrand]);
+
+  // when a category is selected and products loaded, scroll to featured strip
+  useEffect(() => {
+    if (selectedCategory && !loadingProducts) {
+      setTimeout(() => {
+        try { featuredRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { /* ignore */ }
+      }, 200);
+    }
+    // reset brand filter when switching away from CPU category
+    try {
+      if (selectedCategory !== 'cpu') setSelectedBrand('all');
+    } catch(e) { /* ignore if prop not provided */ }
+  }, [selectedCategory, loadingProducts]);
 
   const [suggestions, setSuggestions] = useState([]);
   useEffect(() => {
@@ -52,19 +72,16 @@ export default function Home({ setPage }) {
     return () => { cancelled = true; };
   }, []);
 
-  // Filter products by selected category
-  const filteredProducts = selectedCategory 
-    ? products.filter(p => p.category === selectedCategory)
-    : products;
+  // rely on server-side filtering; products already filtered when selectedCategory and brand are set
+  const filtered = products;
 
-  const grouped = filteredProducts.reduce((acc, p) => {
+  const grouped = filtered.reduce((acc, p) => {
     const k = (p.category || 'other').toUpperCase();
     (acc[k] = acc[k] || []).push(p);
     return acc;
   }, {});
-
   return (
-    <div className="home-page" style={{ display: 'flex', minHeight: '100vh' }}>
+    <div className="home-page">
       {/* Hero Section */}
       <section className="hero-section" style={{ textAlign: 'center', padding: '3rem 1rem 4rem' }}>
         <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '1.5rem', lineHeight: 1.2 }}>
@@ -90,36 +107,77 @@ export default function Home({ setPage }) {
       {suggestions && suggestions.length > 0 && (
         <section style={{ marginTop: '2rem', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem' }}>Gợi ý cấu hình (ví dụ: Gaming ~15.000.000₫)</h2>
-          <div className="grid-3">
-            {suggestions.map((s, i) => (
-              <div key={i} className="glass-card">
-                <h3 style={{ marginBottom: '0.5rem' }}>Gợi ý #{i+1} — Tổng: <span style={{ color: 'var(--primary)' }}>{fmt(s.totalPrice)}</span></h3>
-                <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
-                  {Object.entries(s.components).map(([k, comp]) => (
-                    <li key={k} style={{ marginBottom: '0.4rem', display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>{k.toUpperCase()}</span>
-                      <span style={{ fontWeight: 700 }}>{comp ? comp.name : '—'}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                  <button className="btn btn-primary" onClick={() => setPage('pc-builder')}>Tùy chỉnh</button>
+          <div className="grid-3" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            {suggestions.map((s, i) => {
+              // choose a hero component (prefer vga, then cpu, else first)
+              const comps = s.components || {};
+              const hero = comps.vga || comps.cpu || Object.values(comps).find(c => c);
+              const heroImg = hero?.image || '/images/placeholder.svg';
+              const vendor = hero?.brand || '';
+              const title = hero?.name || `Gợi ý #${i+1}`;
+              const price = s.totalPrice || 0;
+              const oldPrice = Math.round(price * 1.12);
+              const discount = Math.round((oldPrice - price) / oldPrice * 100);
+              return (
+                <div key={i} style={{ width: '220px' }}>
+                  <div className="product-card glass-card" style={{ padding: '0.5rem', position: 'relative' }}>
+                    <div style={{ position: 'relative' }}>
+                      <img src={heroImg} alt={title} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px' }} />
+                      <div style={{ position: 'absolute', left: 8, top: 8, background: 'linear-gradient(90deg,#7c3aed,#6366f1)', color: 'white', padding: '6px 8px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 700 }}>
+                        TIẾT KIỆM<br />{fmt(oldPrice - price)}
+                      </div>
+                    </div>
+                    <div style={{ padding: '0.6rem 0 0.25rem' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 700 }}>{vendor}</div>
+                      <div style={{ fontWeight: 700, marginTop: '6px', minHeight: '40px' }}>{title}</div>
+                      <div style={{ marginTop: '8px' }}>
+                        <div style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '1rem' }}>{fmt(price)}</div>
+                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}><s>{fmt(oldPrice)}</s> <span style={{ color: 'var(--color-danger)', marginLeft: '6px' }}>-{discount}%</span></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn btn-primary" onClick={() => setPage('pc-builder')}>Tùy chỉnh</button>
+                    <button className="btn btn-ghost" onClick={() => { setSelectedSuggestion && setSelectedSuggestion(s); setPage('suggestion'); }}>Xem chi tiết</button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
+      )}
+
+      {/* Banner when filtered */}
+      {selectedCategory && (
+        <div style={{ background: 'linear-gradient(90deg, rgba(59,130,246,0.12), rgba(99,102,241,0.06))', border: '1px solid rgba(59,130,246,0.12)', padding: '0.75rem 1rem', borderRadius: '8px', margin: '1rem 0' }}>
+          <strong style={{ color: 'var(--primary)', marginRight: '0.5rem' }}>Bộ lọc:</strong>
+          <span>Hiển thị <strong style={{ textTransform: 'uppercase' }}>{String(selectedCategory)}</strong> — <strong>{loadingProducts ? 'Đang tải...' : `${filtered.length} sản phẩm`}</strong></span>
+          <button className="btn btn-ghost" style={{ marginLeft: '1rem' }} onClick={() => setSelectedCategory(null)}>Xóa bộ lọc</button>
+        </div>
+      )}
+
+      {/* Brand pills for CPU category */}
+      {selectedCategory === 'cpu' && (
+        <div style={{ margin: '0.75rem 0', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button className={`btn ${selectedBrand === 'all' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSelectedBrand('all')}>Tất cả</button>
+          <button className={`btn ${selectedBrand === 'intel' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSelectedBrand('intel')}>Intel</button>
+          <button className={`btn ${selectedBrand === 'amd' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSelectedBrand('amd')}>AMD</button>
+          <button className={`btn ${selectedBrand === 'other' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSelectedBrand('other')}>Khác</button>
+        </div>
       )}
 
       {/* Featured products horizontal strip */}
       <section style={{ marginTop: '2rem', marginBottom: '2.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Sản Phẩm Nổi Bật</h2>
+          {selectedCategory && (
+              <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Hiển thị: <strong style={{ textTransform: 'uppercase' }}>{String(selectedCategory)}</strong> — <span style={{ fontWeight: 700 }}>{loadingProducts ? 'Đang tải...' : `${filtered.length} sản phẩm`}</span></div>
+          )}
         </div>
 
-        <div className="featured-strip">
-          {products.slice(0, 12).map((p) => (
-            <div key={p._id || p.name} className="product-card">
+        <div className="featured-strip" ref={featuredRef} id="featured-strip">
+          {filtered.slice(0, 12).map((p) => (
+            <div key={p._id || p.name} className="product-card" style={{ cursor: 'pointer' }} onClick={() => { setSelectedProductId && setSelectedProductId(p._id); setPage('product'); }}>
               <div className="product-image" aria-hidden>
                 <img
                   src={(p.image ? `/api/pc-builder/image?url=${encodeURIComponent(p.image)}` : placeholderFor(p.name))}
@@ -145,11 +203,10 @@ export default function Home({ setPage }) {
         <section key={cat} className="category-section">
           <div className="category-header">
             <span className="category-pill">{cat}</span>
-            <h3 className="category-title">{cat === 'OTHER' ? 'Khác' : cat}</h3>
-          </div>
+              </div>
           <div className="category-row">
             {grouped[cat].slice(0,6).map((p) => (
-              <div className="category-card" key={p._id || p.name}>
+              <div className="category-card" key={p._id || p.name} style={{ cursor: 'pointer' }} onClick={() => { setSelectedProductId && setSelectedProductId(p._id); setPage('product'); }}>
                 <div className="category-thumb">
                   <img
                     src={(p.image ? `/api/pc-builder/image?url=${encodeURIComponent(p.image)}` : placeholderFor(p.name))}

@@ -46,24 +46,49 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Lỗi hệ thống máy chủ xảy ra!', error: err.message });
 });
 
-// Connect to MongoDB (Atlas or local fallback) and Start Server
+// Connect to MongoDB (Atlas, local, or in-memory fallback for dev) and Start Server
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/sanpham';
-if (!process.env.MONGODB_URI) {
-  console.warn('⚠️ MONGODB_URI not set; falling back to local:', MONGODB_URI);
+
+async function startServerWithUri(uri) {
+  await mongoose.connect(uri);
+  console.log('✅ Connected to MongoDB.');
+  app.listen(PORT, () => {
+    console.log(`==================================================`);
+    console.log(`  PC Builder & Component Shop Server running on port ${PORT}`);
+    console.log(`  Health Check URL: http://localhost:${PORT}/api/health`);
+    console.log(`==================================================`);
+  });
 }
 
 console.log('⏳ Connecting to MongoDB...');
-mongoose.connect(MONGODB_URI)
-  .then(() => {
-    console.log('✅ Connected to MongoDB Atlas successfully!');
-    app.listen(PORT, () => {
-      console.log(`==================================================`);
-      console.log(`  PC Builder & Component Shop Server running on port ${PORT}`);
-      console.log(`  Health Check URL: http://localhost:${PORT}/api/health`);
-      console.log(`==================================================`);
-    });
-  })
-  .catch((err) => {
-    console.error('❌ Failed to connect to MongoDB Atlas:', err.message);
+startServerWithUri(MONGODB_URI).catch(async (err) => {
+  console.warn('⚠️ Initial MongoDB connection failed:', err.message);
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ Production requires a working MongoDB. Exiting.');
     process.exit(1);
-  });
+  }
+
+  // Try an in-memory MongoDB for local development
+  try {
+    console.log('🧪 Falling back to in-memory MongoDB for development...');
+    const { MongoMemoryServer } = await import('mongodb-memory-server');
+    const mongod = await MongoMemoryServer.create();
+    const memUri = mongod.getUri();
+    await startServerWithUri(memUri);
+    // Seed the in-memory database so the frontend has products to display
+    try {
+      console.log('📦 Seeding in-memory database...');
+      const cp = await import('child_process');
+      const seedPath = new URL('./seedPC.js', import.meta.url).pathname;
+      const child = cp.spawn('node', [seedPath, memUri], { stdio: 'inherit' });
+      child.on('close', (code) => {
+        console.log(`📦 Seed process exited with code ${code}`);
+      });
+    } catch (seedErr) {
+      console.warn('⚠️ Failed to run seed script for in-memory DB:', seedErr.message);
+    }
+  } catch (memErr) {
+    console.error('❌ Failed to start in-memory MongoDB:', memErr.message);
+    process.exit(1);
+  }
+});

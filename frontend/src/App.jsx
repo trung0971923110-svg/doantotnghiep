@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Cpu, Wrench, Video, LayoutDashboard, Home as HomeIcon } from 'lucide-react';
+import { Cpu, Wrench, Video, LayoutDashboard, Home as HomeIcon, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import Home from './pages/Home.jsx';
+import SuggestionDetail from './pages/SuggestionDetail.jsx';
+import ProductDetail from './pages/ProductDetail.jsx';
 import PCBuilder from './pages/PCBuilder.jsx';
 import RepairService from './pages/RepairService.jsx';
 import CameraPlanner from './pages/CameraPlanner.jsx';
@@ -9,6 +11,13 @@ import Dashboard from './pages/Dashboard.jsx';
 export default function App() {
   const [page, setPage] = useState('home');
   const [user, setUser] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [selectedBrand, setSelectedBrand] = useState('all');
+  const [cpuExpanded, setCpuExpanded] = useState(false);
+  
+  const [selectedProductId, setSelectedProductId] = useState(null);
+  const [selectedSuggestion, setSelectedSuggestion] = useState(null);
 
   // Restore user session if saved
   useEffect(() => {
@@ -35,7 +44,11 @@ export default function App() {
   const renderPage = () => {
     switch (page) {
       case 'home':
-        return <Home setPage={setPage} />;
+        return <Home setPage={setPage} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} setSelectedProductId={setSelectedProductId} setSelectedSuggestion={setSelectedSuggestion} selectedBrand={selectedBrand} setSelectedBrand={setSelectedBrand} />;
+      case 'product':
+        return <ProductDetail productId={selectedProductId} setPage={setPage} />;
+      case 'suggestion':
+        return <SuggestionDetail suggestion={selectedSuggestion} setPage={setPage} />;
       case 'pc-builder':
         return <PCBuilder />;
       case 'repair-service':
@@ -53,6 +66,9 @@ export default function App() {
     <div className="app-container">
       {/* Premium Sticky Header Navigation */}
       <header className="header-glass">
+        <button aria-label="Toggle sidebar" title="Ẩn/Hiện danh mục" className="btn btn-ghost" style={{ marginRight: '0.5rem', padding: '6px' }} onClick={() => setSidebarVisible(v => !v)}>
+          {sidebarVisible ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+        </button>
         <div className="logo-container" onClick={() => setPage('pc-builder')}>
           <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)', color: 'white', padding: '0.5rem', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Cpu size={22} />
@@ -102,10 +118,52 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Page Area */}
-      <main className="main-content">
-        {renderPage()}
-      </main>
+      {/* Main Page Area with left sidebar */}
+      <div className="site-body">
+        <aside className="left-sidebar" style={{ display: sidebarVisible ? 'block' : 'none' }}>
+          <ul className="left-cats">
+            <li className={selectedCategory === null ? 'cat-item active' : 'cat-item'} onClick={() => { setSelectedCategory(null); setSelectedBrand('all'); setPage('home'); }}><span className="cat-label">Tất cả</span></li>
+            <li className={selectedCategory === 'cpu' ? 'cat-item active' : 'cat-item'}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div onClick={() => { setSelectedCategory('cpu'); setSelectedBrand('all'); setPage('home'); }} style={{ cursor: 'pointer' }}>
+                  <span className="cat-label">CPU</span>
+                </div>
+                <button aria-label="Toggle CPU brands" title="Hiện/ẩn hãng CPU" className="btn btn-ghost" onClick={() => setCpuExpanded(v => !v)} style={{ padding: 6 }}>
+                  {cpuExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+              </div>
+              {cpuExpanded && (
+                <ul style={{ listStyle: 'none', paddingLeft: '0.75rem', marginTop: '0.5rem' }}>
+                  <li className={selectedBrand === 'intel' ? 'cat-sub active' : 'cat-sub'} onClick={() => { setSelectedCategory('cpu'); setSelectedBrand('intel'); setPage('home'); }} style={{ cursor: 'pointer', padding: '6px 8px', borderRadius: 8 }}>Intel</li>
+                  <li className={selectedBrand === 'amd' ? 'cat-sub active' : 'cat-sub'} onClick={() => { setSelectedCategory('cpu'); setSelectedBrand('amd'); setPage('home'); }} style={{ cursor: 'pointer', padding: '6px 8px', borderRadius: 8 }}>AMD</li>
+                </ul>
+              )}
+            </li>
+            <li className={selectedCategory === 'vga' ? 'cat-item active' : 'cat-item'} onClick={() => { setSelectedCategory('vga'); setPage('home'); }}><span className="cat-label">VGA</span></li>
+            <li className={selectedCategory === 'ram' ? 'cat-item active' : 'cat-item'} onClick={() => { setSelectedCategory('ram'); setPage('home'); }}><span className="cat-label">RAM</span></li>
+            <li className={selectedCategory === 'ssd' ? 'cat-item active' : 'cat-item'} onClick={() => { setSelectedCategory('ssd'); setPage('home'); }}><span className="cat-label">SSD</span></li>
+            <li className={selectedCategory === 'case' ? 'cat-item active' : 'cat-item'} onClick={() => { setSelectedCategory('case'); setPage('home'); }}><span className="cat-label">CASE</span></li>
+            <li className={selectedCategory === 'psu' ? 'cat-item active' : 'cat-item'} onClick={() => { setSelectedCategory('psu'); setPage('home'); }}><span className="cat-label">NGUỒN</span></li>
+            <li className={selectedCategory === 'mainboard' ? 'cat-item active' : 'cat-item'} onClick={() => { setSelectedCategory('mainboard'); setPage('home'); }}><span className="cat-label">MAINBOARD</span></li>
+          </ul>
+        </aside>
+        <main className="main-content">
+          {renderPage()}
+        </main>
+      </div>
+
+      {/* Floating handle to reopen sidebar when hidden */}
+      {!sidebarVisible && (
+        <button
+          onClick={() => setSidebarVisible(true)}
+          aria-label="Open categories"
+          title="Hiện danh mục"
+          style={{ position: 'fixed', left: 8, top: 120, zIndex: 9999, padding: '8px 10px', borderRadius: 8 }}
+          className="btn btn-primary btn-sm"
+        >
+          Danh mục
+        </button>
+      )}
 
       {/* Premium Footer */}
       <footer className="footer-glass">

@@ -45,7 +45,7 @@ router.post('/suggest', async (req, res) => {
 // GET products (simple product listing for storefront)
 router.get('/products', async (req, res) => {
   try {
-    const { category, limit } = req.query;
+    const { category, limit, brand } = req.query;
     const filter = {};
     if (category) {
       // allow category name or id
@@ -57,6 +57,14 @@ router.get('/products', async (req, res) => {
       }
       if (cat) filter.category = cat._id;
     }
+    // optional brand filter (case-insensitive)
+    if (brand) {
+      // allow comma-separated list
+      const brands = String(brand).split(',').map(b => b.trim()).filter(Boolean);
+      if (brands.length) {
+        filter.brand = { $in: brands.map(b => new RegExp(`^${b}$`, 'i')) };
+      }
+    }
 
     const q = Product.find(filter).sort({ price: -1 }).limit(Number(limit) || 0).lean();
     const products = await q;
@@ -67,6 +75,20 @@ router.get('/products', async (req, res) => {
     res.json(out);
   } catch (err) {
     res.status(500).json({ message: 'Lỗi tải danh sách sản phẩm', error: err.message });
+  }
+});
+
+// GET single product by id
+router.get('/products/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const prod = await Product.findById(id).lean();
+    if (!prod) return res.status(404).json({ message: 'Product not found' });
+    const cat = prod.category ? await Category.findById(prod.category).lean() : null;
+    const out = { ...prod, category: cat ? cat.name : prod.category };
+    res.json(out);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi tải sản phẩm', error: err.message });
   }
 });
 

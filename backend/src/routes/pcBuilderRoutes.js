@@ -2,6 +2,8 @@ import express from 'express';
 import { pcBuilderService } from '../services/pcBuilderService.js';
 import Product from '../models/Product.js';
 import Category from '../models/Category.js';
+import http from 'http';
+import https from 'https';
 
 const router = express.Router();
 
@@ -62,6 +64,35 @@ router.get('/products', async (req, res) => {
     res.json(out);
   } catch (err) {
     res.status(500).json({ message: 'Lỗi tải danh sách sản phẩm', error: err.message });
+  }
+});
+
+// Image proxy to avoid external hotlink/CORS issues
+router.get('/image', async (req, res) => {
+  try {
+    const { url } = req.query;
+    if (!url) return res.status(400).send('Missing url');
+    let parsed;
+    try { parsed = new URL(url); } catch (e) { return res.status(400).send('Invalid url'); }
+    if (!['http:', 'https:'].includes(parsed.protocol)) return res.status(400).send('Invalid protocol');
+
+    const client = parsed.protocol === 'https:' ? https : http;
+    const prox = client.get(parsed.href, (proxRes) => {
+      if (proxRes.statusCode >= 400) {
+        res.sendStatus(proxRes.statusCode);
+        return;
+      }
+      const ct = proxRes.headers['content-type'] || 'application/octet-stream';
+      res.setHeader('content-type', ct);
+      res.setHeader('cache-control', 'public, max-age=86400');
+      proxRes.pipe(res);
+    });
+    prox.on('error', (err) => {
+      console.error('Image proxy error', err.message);
+      res.sendStatus(502);
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Proxy error', error: err.message });
   }
 });
 

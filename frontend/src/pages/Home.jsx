@@ -109,7 +109,7 @@ export default function Home({ setPage }) {
             <div key={p._id || p.name} className="product-card">
               <div className="product-image" aria-hidden>
                 <img
-                  src={p.image || placeholderFor(p.name)}
+                  src={(p.image ? `/api/pc-builder/image?url=${encodeURIComponent(p.image)}` : placeholderFor(p.name))}
                   alt={p.name}
                   onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://via.placeholder.com/400x300?text=No+Image'; }}
                 />
@@ -135,7 +135,7 @@ export default function Home({ setPage }) {
               <div className="category-card" key={p._id || p.name}>
                 <div className="category-thumb">
                   <img
-                    src={p.image || placeholderFor(p.name)}
+                    src={(p.image ? `/api/pc-builder/image?url=${encodeURIComponent(p.image)}` : placeholderFor(p.name))}
                     alt={p.name}
                     onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image'; }}
                   />

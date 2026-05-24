@@ -422,6 +422,19 @@ body {
 .category-thumb img { width: 100%; height: 120px; object-fit: cover; border-radius: 6px; display: block; }
 .image-placeholder {
   width: 100%; height: 100%; display:flex; align-items:center; justify-content:center; background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(6,182,212,0.04)); border-radius: 6px; color: var(--text-primary); font-weight:700; font-size:1.1rem; }
+
+/* Make missing images visually obvious and prevent layout collapse */
+.product-image, .category-thumb {
+  background: #f3f4f8;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.04);
+}
+.product-image img, .category-thumb img {
+  min-height: 90px;
+  background: #f3f4f8;
+}
+.product-card { background: var(--bg-dark-card); }
 .image-placeholder.small { height: 70px; font-size:0.95rem; }
 
 .product-info { width:100%; padding-top:0.6rem; text-align:center }

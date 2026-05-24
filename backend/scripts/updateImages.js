@@ -19,40 +19,14 @@ async function loadMapping() {
 }
 
 function seedImageForName(name, category, brand) {
-  // Prefer more relevant images using Unsplash source queries (keyword-based)
-  const cat = (category || '').toLowerCase();
-  const b = (brand || '').toLowerCase();
-
-  const catMap = {
-    cpu: 'cpu,processor,computer',
-    mainboard: 'motherboard,mainboard,pc motherboard',
-    ram: 'ram,memory,computer memory',
-    vga: 'gpu,graphics card,video card',
-    psu: 'power supply,psu,power supply unit',
-    ssd: 'ssd,solid state drive,storage,hard drive',
-    case: 'pc case,computer case,chassis',
-    camera: 'camera,cctv,security camera',
-    dvr: 'dvr,recording device',
-    hdd: 'hard drive,hdd,storage'
-  };
-
-  let keywords = '';
-  // category may be stored as name string or id; try to use category value
-  if (cat && Object.keys(catMap).includes(cat)) keywords = catMap[cat];
-  // if brand present, include brand as keyword to bias results
-  if (b) {
-    const brandTerm = b.split(/\s+/).slice(0,2).join(',');
-    keywords = keywords ? `${brandTerm},${keywords}` : brandTerm;
-  }
-
-  // fallback to picsum seeded image if no keywords
-  if (!keywords) {
-    const seed = encodeURIComponent((name || 'product').replace(/\s+/g, '-').toLowerCase());
-    return `https://picsum.photos/seed/${seed}/600/400`;
-  }
-
-  // Use Unsplash random image for the keywords
-  return `https://source.unsplash.com/600x400/?${encodeURIComponent(keywords)}`;
+  // Use picsum.photos seeded images (reliable and predictable)
+  const seedParts = [name || '', brand || '', category || '']
+    .join('-')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-zA-Z0-9-_]/g, '')
+    .toLowerCase();
+  const seed = encodeURIComponent(seedParts || 'product');
+  return `https://picsum.photos/seed/${seed}/600/400`;
 }
 
 async function run() {

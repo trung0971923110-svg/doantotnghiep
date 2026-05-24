@@ -6,6 +6,8 @@ Prerequisites
 - Node.js (>= 18 recommended)
 - npm
 - MongoDB (either local or Atlas)
+ - (Optional for Docker) Docker Desktop (Windows) or Docker Engine + Docker Compose
+
 
 1) Configure MongoDB
 - Option A: Local MongoDB
@@ -54,6 +56,35 @@ Notes
     ```powershell
     docker compose exec backend node seedPC.js
     ```
+  - Or run the one-time seed job included in `docker-compose.yml` (recommended first-run):
+    ```powershell
+    docker compose up --build -d mongo
+    docker compose run --rm seed
+    # then start all services
+    docker compose up -d backend frontend
+    ```
+
+Install Docker Desktop on Windows (WSL2 preferred)
+1) Requirements
+  - Windows 10 2004+ (Build 19041+) or Windows 11 (64-bit). WSL2 recommended.
+2) Install WSL2 (if not already):
+  - Open PowerShell as Administrator and run:
+    ```powershell
+    wsl --install
+    ```
+  - If `wsl --install` is not available, follow Microsoft docs to enable the Windows Subsystem for Linux and install a distro.
+3) Install Docker Desktop
+  - Download Docker Desktop from https://www.docker.com/get-started
+  - Run the installer and enable "Use the WSL 2 based engine" when prompted.
+  - After installation, open Docker Desktop and confirm status is "Running".
+4) Verify installation in PowerShell:
+  ```powershell
+  docker --version
+  docker compose version
+  ```
+5) Troubleshooting
+  - If `docker` command not found: make sure Docker Desktop is started and you restarted your shell.
+  - If you see permission or WSL errors, follow Docker Desktop UI prompts or re-run WSL install steps.
 
 Quick API test (PowerShell):
 ```powershell

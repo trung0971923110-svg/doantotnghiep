@@ -53,7 +53,7 @@ export default function App() {
     <div className="app-container">
       {/* Premium Sticky Header Navigation */}
       <header className="header-glass">
-        <div className="logo-container" onClick={() => setPage('home')}>
+        <div className="logo-container" onClick={() => setPage('pc-builder')}>
           <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)', color: 'white', padding: '0.5rem', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <Cpu size={22} />
           </div>

@@ -31,5 +31,16 @@ services:
     depends_on:
       - backend
 
+  # One-time seed job: runs the seed script against the mongo service and exits
+  seed:
+    build:
+      context: ./backend
+    command: ["node", "seedPC.js"]
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/sanpham
+    depends_on:
+      - mongo
+    restart: "no"
+
 volumes:
   mongo_data:

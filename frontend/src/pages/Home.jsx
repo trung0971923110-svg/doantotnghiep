@@ -1,7 +1,54 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Cpu, Wrench, Video, ShieldAlert, CheckCircle, Clock } from 'lucide-react';
 
+// Helper to format prices
+const fmt = (v) => v ? v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '₫' : 'Liên hệ';
+
 export default function Home({ setPage }) {
+  const [products, setProducts] = useState([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await fetch('/api/pc-builder/products');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setProducts(data);
+      } catch (e) {
+        console.warn('Failed to load products', e);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  const [suggestions, setSuggestions] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSuggest() {
+      try {
+        const res = await fetch('/api/pc-builder/suggest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ budget: 15000000, need: 'gaming', count: 3 })
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setSuggestions(data);
+      } catch (e) {
+        console.warn('Failed to load suggestions', e);
+      }
+    }
+    loadSuggest();
+    return () => { cancelled = true; };
+  }, []);
+
+  const grouped = products.reduce((acc, p) => {
+    const k = (p.category || 'other').toUpperCase();
+    (acc[k] = acc[k] || []).push(p);
+    return acc;
+  }, {});
   return (
     <div className="home-page">
       {/* Hero Section */}
@@ -24,6 +71,71 @@ export default function Home({ setPage }) {
           </button>
         </div>
       </section>
+
+      {/* Suggested builds */}
+      {suggestions && suggestions.length > 0 && (
+        <section style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem' }}>Gợi ý cấu hình (ví dụ: Gaming ~15.000.000₫)</h2>
+          <div className="grid-3">
+            {suggestions.map((s, i) => (
+              <div key={i} className="glass-card">
+                <h3 style={{ marginBottom: '0.5rem' }}>Gợi ý #{i+1} — Tổng: <span style={{ color: 'var(--primary)' }}>{fmt(s.totalPrice)}</span></h3>
+                <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
+                  {Object.entries(s.components).map(([k, comp]) => (
+                    <li key={k} style={{ marginBottom: '0.4rem', display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>{k.toUpperCase()}</span>
+                      <span style={{ fontWeight: 700 }}>{comp ? comp.name : '—'}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+                  <button className="btn btn-primary" onClick={() => setPage('pc-builder')}>Tùy chỉnh</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Featured products horizontal strip */}
+      <section style={{ marginTop: '2rem', marginBottom: '2.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Sản Phẩm Nổi Bật</h2>
+        </div>
+
+        <div className="featured-strip">
+          {products.slice(0, 12).map((p) => (
+            <div key={p._id || p.name} className="product-card">
+              <div className="product-image" aria-hidden>
+                <div className="image-placeholder">{(p.name || '').split(' ').slice(0,2).map(s=>s[0]||'').join('')}</div>
+              </div>
+              <div className="product-info">
+                <div className="product-name">{p.name}</div>
+                <div className="product-price">{fmt(p.price)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Category rows (like the screenshot's "LAPTOP XÁCH TAY" section) */}
+      {Object.keys(grouped).map((cat) => (
+        <section key={cat} className="category-section">
+          <div className="category-header">
+            <span className="category-pill">{cat}</span>
+            <h3 className="category-title">{cat === 'OTHER' ? 'Khác' : cat}</h3>
+          </div>
+          <div className="category-row">
+            {grouped[cat].slice(0,6).map((p) => (
+              <div className="category-card" key={p._id || p.name}>
+                <div className="category-thumb"><div className="image-placeholder small">{(p.name||'').split(' ').slice(0,2).map(s=>s[0]||'').join('')}</div></div>
+                <div className="cat-name">{p.name}</div>
+                <div className="cat-price">{fmt(p.price)}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ))}
 
       {/* Feature Cards Section */}
       <section className="features-grid" style={{ marginBottom: '4rem' }}>

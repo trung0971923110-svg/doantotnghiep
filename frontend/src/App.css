@@ -2,12 +2,13 @@
 
 :root {
   /* Harmony Color Palette */
-  --bg-dark-base: #0f111a;
-  --bg-dark-deep: #07090e;
-  --bg-dark-card: rgba(22, 26, 42, 0.65);
-  --bg-dark-card-hover: rgba(30, 36, 58, 0.85);
-  
-  --primary: #6366f1; /* Indigo */
+  /* Light theme palette (overrides dark defaults) */
+  --bg-dark-base: #f5f6f8; /* page background - light gray */
+  --bg-dark-deep: #eceff3; /* slightly darker for subtle elements */
+  --bg-dark-card: rgba(255, 255, 255, 0.9);
+  --bg-dark-card-hover: rgba(255, 255, 255, 1);
+
+  --primary: #6366f1; /* Indigo (kept) */
   --primary-glow: rgba(99, 102, 241, 0.35);
   --secondary: #06b6d4; /* Cyan */
   --secondary-glow: rgba(6, 182, 212, 0.35);
@@ -24,14 +25,14 @@
   --color-info-bg: rgba(59, 130, 246, 0.15);
   
   /* Text Colors */
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #0f1724; /* dark text */
+  --text-secondary: #475569;
+  --text-muted: #6b7280;
   
   /* Glassmorphism Styles */
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-border-focus: rgba(99, 102, 241, 0.5);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --glass-border: rgba(15, 23, 42, 0.06);
+  --glass-border-focus: rgba(99, 102, 241, 0.18);
+  --glass-shadow: 0 8px 24px 0 rgba(2, 6, 23, 0.06);
   
   /* Fonts */
   --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
@@ -54,10 +55,9 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
   line-height: 1.5;
-  background-image: 
-    radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 40%);
-  background-attachment: fixed;
+  /* subtle flat background for light theme */
+  background-image: none;
+  background-attachment: initial;
 }
 
 /* Scrollbar Customization */
@@ -69,11 +69,11 @@ body {
   background: var(--bg-dark-deep);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.3);
+  background: rgba(15, 23, 42, 0.12);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--primary);
+  background: rgba(15, 23, 42, 0.18);
 }
 
 /* Layout */
@@ -93,9 +93,9 @@ body {
 
 /* Header & Navigation Styling */
 .header-glass {
-  background: rgba(7, 9, 14, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border-bottom: 1px solid var(--glass-border);
   position: sticky;
   top: 0;
@@ -142,7 +142,7 @@ body {
 
 .nav-item:hover, .nav-item.active {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(15, 23, 42, 0.03);
 }
 
 .nav-item.active {
@@ -224,8 +224,8 @@ body {
 .form-input, .form-select, .form-textarea {
   width: 100%;
   padding: 0.75rem 1rem;
-  background: rgba(15, 17, 26, 0.8);
-  border: 1px solid var(--glass-border);
+  background: rgba(245, 246, 250, 0.9);
+  border: 1px solid rgba(15, 23, 42, 0.06);
   border-radius: 8px;
   color: var(--text-primary);
   font-family: var(--font-family);
@@ -397,6 +397,50 @@ body {
   font-size: 0.9rem;
   color: var(--text-secondary);
 }
+
+/* Product strip and category rows (homepage) */
+.featured-strip {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.product-card {
+  min-width: 180px;
+  background: var(--bg-dark-card);
+  border-radius: 8px;
+  padding: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid var(--glass-border);
+}
+
+.product-image { width: 100%; height: 110px; display:flex; align-items:center; justify-content:center; }
+.image-placeholder {
+  width: 100%; height: 100%; display:flex; align-items:center; justify-content:center; background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(6,182,212,0.04)); border-radius: 6px; color: var(--text-primary); font-weight:700; font-size:1.1rem; }
+.image-placeholder.small { height: 70px; font-size:0.95rem; }
+
+.product-info { width:100%; padding-top:0.6rem; text-align:center }
+.product-name { font-size: 0.95rem; font-weight:600; color:var(--text-primary); margin-bottom:0.35rem; }
+.product-price { color: var(--primary); font-weight:700; }
+
+.category-section { margin-top: 2.25rem; margin-bottom: 2.25rem; }
+.category-header { display:flex; align-items:center; gap:1rem; margin-bottom:1rem }
+.category-pill { background: #0d6efd; color: white; padding: 0.45rem 0.8rem; border-radius: 8px; font-weight:700; }
+.category-title { border-bottom: 2px solid #0d6efd; padding-bottom: 0.25rem; margin: 0; font-size:1.2rem }
+
+.category-row { display:flex; gap:1rem; flex-wrap:wrap }
+.category-card { width: calc(16.66% - 1rem); min-width: 160px; background: var(--bg-dark-card); padding:0.6rem; border-radius:8px; border:1px solid var(--glass-border); text-align:left }
+.category-thumb { height: 120px; display:flex; align-items:center; justify-content:center; margin-bottom:0.6rem }
+.cat-name { font-weight:600; font-size:0.95rem; color:var(--text-primary); margin-bottom:0.35rem }
+.cat-price { color: var(--primary); font-weight:700 }
+
+@media (max-width: 900px) {
+  .category-card { width: calc(50% - 0.75rem); }
+}
+
 
 /* Page Headers */
 .page-header {

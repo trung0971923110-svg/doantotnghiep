@@ -1,5 +1,7 @@
 import express from 'express';
 import { pcBuilderService } from '../services/pcBuilderService.js';
+import Product from '../models/Product.js';
+import Category from '../models/Category.js';
 
 const router = express.Router();
 
@@ -35,4 +37,33 @@ router.post('/suggest', async (req, res) => {
   }
 });
 
+// GET products (simple product listing for storefront)
+router.get('/products', async (req, res) => {
+  try {
+    const { category, limit } = req.query;
+    const filter = {};
+    if (category) {
+      // allow category name or id
+      let cat = null;
+      if (/^[0-9a-fA-F]{24}$/.test(category)) {
+        cat = await Category.findById(category);
+      } else {
+        cat = await Category.findOne({ name: { $regex: new RegExp(`^${category}$`, 'i') } });
+      }
+      if (cat) filter.category = cat._id;
+    }
+
+    const q = Product.find(filter).sort({ price: -1 }).limit(Number(limit) || 0).lean();
+    const products = await q;
+    // populate category name client-side-friendly
+    const cats = await Category.find({ _id: { $in: products.map(p => p.category).filter(Boolean) } }).lean();
+    const catMap = Object.fromEntries(cats.map(c => [String(c._id), c.name]));
+    const out = products.map(p => ({ ...p, category: catMap[String(p.category)] || p.category }));
+    res.json(out);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi tải danh sách sản phẩm', error: err.message });
+  }
+});
+
 export default router;
+

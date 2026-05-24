@@ -3,14 +3,21 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import mongoose from 'mongoose';
+import http from 'http';
+import { Server as IOServer } from 'socket.io';
 import authRoutes from './src/routes/authRoutes.js';
 import inventoryRoutes from './src/routes/inventoryRoutes.js';
 import repairRoutes from './src/routes/repairRoutes.js';
 import pcBuilderRoutes from './src/routes/pcBuilderRoutes.js';
 import cameraRoutes from './src/routes/cameraRoutes.js';
+import Product from './src/models/Product.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+// Create HTTP server and attach Socket.IO for realtime notifications
+const server = http.createServer(app);
+const io = new IOServer(server, { cors: { origin: '*' } });
+app.set('io', io);
 
 // Enable CORS and JSON parsing
 app.use(cors());
@@ -52,7 +59,26 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/sanpha
 async function startServerWithUri(uri) {
   await mongoose.connect(uri);
   console.log('✅ Connected to MongoDB.');
-  app.listen(PORT, () => {
+  // Try to establish a MongoDB change stream to broadcast external DB updates
+  try {
+    const changeStream = Product.watch([], { fullDocument: 'updateLookup' });
+    changeStream.on('change', (change) => {
+      try {
+        if (!io) return;
+        if (change.operationType === 'update' || change.operationType === 'replace') {
+          const doc = change.fullDocument;
+          if (doc) io.emit('productUpdated', { id: String(doc._id), image: doc.image });
+        } else if (change.operationType === 'insert') {
+          const doc = change.fullDocument;
+          if (doc) io.emit('productInserted', { id: String(doc._id), image: doc.image });
+        }
+      } catch (e) { console.warn('changeStream emit error', e && e.message); }
+    });
+    changeStream.on('error', (err) => console.warn('Product changeStream error:', err && err.message));
+  } catch (e) {
+    console.warn('MongoDB change streams not available in this environment:', e && e.message);
+  }
+  server.listen(PORT, () => {
     console.log(`==================================================`);
     console.log(`  PC Builder & Component Shop Server running on port ${PORT}`);
     console.log(`  Health Check URL: http://localhost:${PORT}/api/health`);

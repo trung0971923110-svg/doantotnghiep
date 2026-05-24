@@ -5,7 +5,7 @@ import { Cpu, Wrench, Video, ShieldAlert, CheckCircle, Clock } from 'lucide-reac
 const fmt = (v) => v ? v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '₫' : 'Liên hệ';
 const placeholderFor = (name) => `/images/placeholder.svg`;
 
-export default function Home({ setPage, selectedCategory, setSelectedCategory, setSelectedProductId, setSelectedSuggestion, selectedBrand, setSelectedBrand }) {
+export default function Home({ setPage, selectedCategory, setSelectedCategory, setSelectedProductId, setSelectedSuggestion, selectedBrand, setSelectedBrand, productUpdateSignal, lastUpdatedProduct }) {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const featuredRef = useRef(null);
@@ -36,7 +36,7 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
     }
     load();
     return () => { cancelled = true; };
-  }, [selectedCategory, selectedBrand]);
+  }, [selectedCategory, selectedBrand, productUpdateSignal]);
 
   // when a category is selected and products loaded, scroll to featured strip
   useEffect(() => {
@@ -80,6 +80,12 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
     (acc[k] = acc[k] || []).push(p);
     return acc;
   }, {});
+  const getImageSrc = (p) => {
+    if (!p || !p.image) return placeholderFor(p?.name);
+    if (/^https?:\/\//i.test(p.image)) return `/api/pc-builder/image?url=${encodeURIComponent(p.image)}`;
+    // assume relative path served by backend (e.g. /images/proxy/xxx)
+    return p.image;
+  };
   return (
     <div className="home-page">
       {/* Hero Section */}
@@ -103,8 +109,8 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
         </div>
       </section>
 
-      {/* Suggested builds */}
-      {suggestions && suggestions.length > 0 && (
+      {/* Suggested builds (hidden when a category filter is active) */}
+      {(!selectedCategory && suggestions && suggestions.length > 0) && (
         <section style={{ marginTop: '2rem', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem' }}>Gợi ý cấu hình (ví dụ: Gaming ~15.000.000₫)</h2>
           <div className="grid-3" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -166,8 +172,9 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
         </div>
       )}
 
-      {/* Featured products horizontal strip */}
-      <section style={{ marginTop: '2rem', marginBottom: '2.5rem' }}>
+      {/* Featured products horizontal strip (hidden when a category filter is active) */}
+      {!selectedCategory && (
+        <section style={{ marginTop: '2rem', marginBottom: '2.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Sản Phẩm Nổi Bật</h2>
           {selectedCategory && (
@@ -179,8 +186,8 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
           {filtered.slice(0, 12).map((p) => (
             <div key={p._id || p.name} className="product-card" style={{ cursor: 'pointer' }} onClick={() => { setSelectedProductId && setSelectedProductId(p._id); setPage('product'); }}>
               <div className="product-image" aria-hidden>
-                <img
-                  src={(p.image ? `/api/pc-builder/image?url=${encodeURIComponent(p.image)}` : placeholderFor(p.name))}
+                  <img
+                  src={getImageSrc(p)}
                   alt={p.name}
                   onError={(e) => {
                     console.warn('Image load failed, falling back:', e.currentTarget.src);
@@ -196,7 +203,8 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
             </div>
           ))}
         </div>
-      </section>
+        </section>
+      )}
 
       {/* Category rows (like the screenshot's "LAPTOP XÁCH TAY" section) */}
       {Object.keys(grouped).map((cat) => (
@@ -209,7 +217,7 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
               <div className="category-card" key={p._id || p.name} style={{ cursor: 'pointer' }} onClick={() => { setSelectedProductId && setSelectedProductId(p._id); setPage('product'); }}>
                 <div className="category-thumb">
                   <img
-                    src={(p.image ? `/api/pc-builder/image?url=${encodeURIComponent(p.image)}` : placeholderFor(p.name))}
+                    src={getImageSrc(p)}
                     alt={p.name}
                     onError={(e) => {
                       console.warn('Category image load failed, falling back:', e.currentTarget.src);

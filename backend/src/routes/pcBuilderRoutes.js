@@ -7,8 +7,22 @@ import https from 'https';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import multer from 'multer';
 
 const router = express.Router();
+
+// Setup upload directory and multer storage for admin image uploads
+const uploadDir = path.join(process.cwd(), 'public', 'proxied_images');
+try { fs.mkdirSync(uploadDir, { recursive: true }); } catch (e) { /* ignore */ }
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.png';
+    const base = path.basename(file.originalname, ext).replace(/[^a-z0-9_-]/ig, '-').toLowerCase();
+    cb(null, `${base}-${Date.now()}${ext}`);
+  }
+});
+const upload = multer({ storage });
 
 // Verify components compatibility
 router.post('/compatibility', async (req, res) => {
@@ -155,5 +169,46 @@ router.get('/image', async (req, res) => {
   }
 });
 
+// Admin endpoint: upload image file and set as product image by id
+router.post('/products/:id/image', upload.single('image'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!req.file) return res.status(400).json({ message: 'No image uploaded' });
+    const rel = `/images/proxy/${req.file.filename}`;
+    const prod = await Product.findByIdAndUpdate(id, { image: rel }, { new: true }).lean();
+    if (!prod) return res.status(404).json({ message: 'Product not found' });
+    // Return updated product
+    const cat = prod.category ? await Category.findById(prod.category).lean() : null;
+    // Emit realtime update to connected clients
+    try {
+      const io = req.app.get('io');
+      if (io) io.emit('productUpdated', { id: prod._id, image: rel });
+    } catch (e) { /* ignore */ }
+    res.json({ ...prod, category: cat ? cat.name : prod.category });
+  } catch (err) {
+    res.status(500).json({ message: 'Upload failed', error: err.message });
+  }
+});
+
+// Admin endpoint: upload image and set by product name (case-insensitive)
+router.post('/products/by-name/image', upload.single('image'), async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ message: 'Missing product name' });
+    if (!req.file) return res.status(400).json({ message: 'No image uploaded' });
+    const prod = await Product.findOneAndUpdate({ name: { $regex: new RegExp(`^${name}$`, 'i') } }, { image: `/images/proxy/${req.file.filename}` }, { new: true }).lean();
+    if (!prod) return res.status(404).json({ message: 'Product not found' });
+    const cat = prod.category ? await Category.findById(prod.category).lean() : null;
+    try {
+      const io = req.app.get('io');
+      if (io) io.emit('productUpdated', { id: prod._id, image: prod.image });
+    } catch (e) { /* ignore */ }
+    res.json({ ...prod, category: cat ? cat.name : prod.category });
+  } catch (err) {
+    res.status(500).json({ message: 'Upload failed', error: err.message });
+  }
+});
+
 export default router;
+
 

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 const fmt = (v) => v ? v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '₫' : 'Liên hệ';
 
-export default function ProductDetail({ productId, setPage }) {
+export default function ProductDetail({ productId, setPage, productUpdateSignal, lastUpdatedProduct }) {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -28,7 +28,7 @@ export default function ProductDetail({ productId, setPage }) {
     }
     load();
     return () => { cancelled = true; };
-  }, [productId]);
+  }, [productId, productUpdateSignal]);
 
   if (!productId) return (
     <div className="glass-card">
@@ -50,7 +50,7 @@ export default function ProductDetail({ productId, setPage }) {
       <button className="btn btn-ghost" onClick={() => setPage('home')}>← Quay lại</button>
       <div className="grid-2" style={{ gap: '2rem', marginTop: '1rem' }}>
         <div className="glass-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <img src={product.image || '/images/placeholder.svg'} alt={product.name} style={{ maxWidth: '100%', maxHeight: '420px' }} />
+          <img src={(product && product.image) ? (/^https?:\/\//i.test(product.image) ? `/api/pc-builder/image?url=${encodeURIComponent(product.image)}` : product.image) : '/images/placeholder.svg'} alt={product.name} style={{ maxWidth: '100%', maxHeight: '420px' }} />
         </div>
         <div className="glass-card">
           <h1 style={{ marginBottom: '0.5rem' }}>{product.name}</h1>

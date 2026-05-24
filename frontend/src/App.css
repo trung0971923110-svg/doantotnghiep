@@ -1,5 +1,8 @@
 /* ITSurv-SMS - Modern Dark & Glassmorphism Design System */
 
+/* Import JetBrains Mono from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap');
+
 :root {
   /* Harmony Color Palette */
   /* Light theme palette (overrides dark defaults) */
@@ -35,7 +38,7 @@
   --glass-shadow: 0 8px 24px 0 rgba(2, 6, 23, 0.06);
   
   /* Fonts */
-  --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, 'Roboto Mono', 'Segoe UI Mono', monospace;
   
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-bounce: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -489,8 +492,8 @@ body {
 .category-pill { background: #0d6efd; color: white; padding: 0.45rem 0.8rem; border-radius: 8px; font-weight:700; }
 .category-title { border-bottom: 2px solid #0d6efd; padding-bottom: 0.25rem; margin: 0; font-size:1.2rem }
 
-.category-row { display:flex; gap:1rem; flex-wrap:wrap }
-.category-card { width: calc(16.66% - 1rem); min-width: 160px; background: var(--bg-dark-card); padding:0.6rem; border-radius:8px; border:1px solid var(--glass-border); text-align:left }
+.category-row { display:flex; gap:1rem; flex-wrap:nowrap; overflow-x:auto; padding-bottom:8px }
+.category-card { flex: 0 0 160px; min-width: 160px; background: var(--bg-dark-card); padding:0.6rem; border-radius:8px; border:1px solid var(--glass-border); text-align:left }
 .category-thumb { height: 120px; display:flex; align-items:center; justify-content:center; margin-bottom:0.6rem }
 .cat-name { font-weight:600; font-size:0.95rem; color:var(--text-primary); margin-bottom:0.35rem }
 .cat-price { color: var(--primary); font-weight:700 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { io as ioClient } from 'socket.io-client';
 import { Cpu, Wrench, Video, LayoutDashboard, Home as HomeIcon, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import Home from './pages/Home.jsx';
 import SuggestionDetail from './pages/SuggestionDetail.jsx';
@@ -18,6 +19,8 @@ export default function App() {
   
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [selectedSuggestion, setSelectedSuggestion] = useState(null);
+  const [productUpdateSignal, setProductUpdateSignal] = useState(0);
+  const [lastUpdatedProduct, setLastUpdatedProduct] = useState(null);
 
   // Restore user session if saved
   useEffect(() => {
@@ -29,6 +32,18 @@ export default function App() {
         localStorage.removeItem('itsurv_user');
       }
     }
+  }, []);
+
+  // Setup Socket.IO to receive realtime product updates
+  useEffect(() => {
+    const socket = ioClient();
+    socket.on('connect', () => console.log('Socket connected', socket.id));
+    socket.on('productUpdated', (payload) => {
+      setLastUpdatedProduct(payload);
+      setProductUpdateSignal(s => s + 1);
+    });
+    socket.on('disconnect', () => console.log('Socket disconnected'));
+    return () => { socket.disconnect(); };
   }, []);
 
   // Sync user state with localStorage
@@ -44,9 +59,9 @@ export default function App() {
   const renderPage = () => {
     switch (page) {
       case 'home':
-        return <Home setPage={setPage} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} setSelectedProductId={setSelectedProductId} setSelectedSuggestion={setSelectedSuggestion} selectedBrand={selectedBrand} setSelectedBrand={setSelectedBrand} />;
+        return <Home setPage={setPage} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} setSelectedProductId={setSelectedProductId} setSelectedSuggestion={setSelectedSuggestion} selectedBrand={selectedBrand} setSelectedBrand={setSelectedBrand} productUpdateSignal={productUpdateSignal} lastUpdatedProduct={lastUpdatedProduct} />;
       case 'product':
-        return <ProductDetail productId={selectedProductId} setPage={setPage} />;
+        return <ProductDetail productId={selectedProductId} setPage={setPage} productUpdateSignal={productUpdateSignal} lastUpdatedProduct={lastUpdatedProduct} />;
       case 'suggestion':
         return <SuggestionDetail suggestion={selectedSuggestion} setPage={setPage} />;
       case 'pc-builder':
@@ -125,7 +140,7 @@ export default function App() {
             <li className={selectedCategory === null ? 'cat-item active' : 'cat-item'} onClick={() => { setSelectedCategory(null); setSelectedBrand('all'); setPage('home'); }}><span className="cat-label">Tất cả</span></li>
             <li className={selectedCategory === 'cpu' ? 'cat-item active' : 'cat-item'}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div onClick={() => { setSelectedCategory('cpu'); setSelectedBrand('all'); setPage('home'); }} style={{ cursor: 'pointer' }}>
+                <div onClick={() => { setSelectedCategory('cpu'); setSelectedBrand('all'); setCpuExpanded(false); setPage('home'); }} style={{ cursor: 'pointer' }}>
                   <span className="cat-label">CPU</span>
                 </div>
                 <button aria-label="Toggle CPU brands" title="Hiện/ẩn hãng CPU" className="btn btn-ghost" onClick={() => setCpuExpanded(v => !v)} style={{ padding: 6 }}>

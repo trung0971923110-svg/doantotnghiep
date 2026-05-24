@@ -3,10 +3,12 @@ import { Cpu, Wrench, Video, ShieldAlert, CheckCircle, Clock } from 'lucide-reac
 
 // Helper to format prices
 const fmt = (v) => v ? v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '₫' : 'Liên hệ';
-const placeholderFor = (name) => `https://via.placeholder.com/400x300?text=${encodeURIComponent(name || 'No+Image')}`;
+const placeholderFor = (name) => `/images/placeholder.svg`;
 
 export default function Home({ setPage }) {
   const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -15,7 +17,12 @@ export default function Home({ setPage }) {
         const res = await fetch('/api/pc-builder/products');
         if (!res.ok) return;
         const data = await res.json();
-        if (!cancelled) setProducts(data);
+        if (!cancelled) {
+          setProducts(data);
+          // Extract unique categories
+          const cats = [...new Set(data.map(p => p.category).filter(Boolean))];
+          setCategories(cats);
+        }
       } catch (e) {
         console.warn('Failed to load products', e);
       }
@@ -45,13 +52,19 @@ export default function Home({ setPage }) {
     return () => { cancelled = true; };
   }, []);
 
-  const grouped = products.reduce((acc, p) => {
+  // Filter products by selected category
+  const filteredProducts = selectedCategory 
+    ? products.filter(p => p.category === selectedCategory)
+    : products;
+
+  const grouped = filteredProducts.reduce((acc, p) => {
     const k = (p.category || 'other').toUpperCase();
     (acc[k] = acc[k] || []).push(p);
     return acc;
   }, {});
+
   return (
-    <div className="home-page">
+    <div className="home-page" style={{ display: 'flex', minHeight: '100vh' }}>
       {/* Hero Section */}
       <section className="hero-section" style={{ textAlign: 'center', padding: '3rem 1rem 4rem' }}>
         <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '1.5rem', lineHeight: 1.2 }}>
@@ -111,7 +124,11 @@ export default function Home({ setPage }) {
                 <img
                   src={(p.image ? `/api/pc-builder/image?url=${encodeURIComponent(p.image)}` : placeholderFor(p.name))}
                   alt={p.name}
-                  onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://via.placeholder.com/400x300?text=No+Image'; }}
+                  onError={(e) => {
+                    console.warn('Image load failed, falling back:', e.currentTarget.src);
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/images/placeholder.svg';
+                  }}
                 />
               </div>
               <div className="product-info">
@@ -137,7 +154,11 @@ export default function Home({ setPage }) {
                   <img
                     src={(p.image ? `/api/pc-builder/image?url=${encodeURIComponent(p.image)}` : placeholderFor(p.name))}
                     alt={p.name}
-                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image'; }}
+                    onError={(e) => {
+                      console.warn('Category image load failed, falling back:', e.currentTarget.src);
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = '/images/placeholder.svg';
+                    }}
                   />
                 </div>
                 <div className="cat-name">{p.name}</div>

@@ -4,6 +4,9 @@ import Product from '../models/Product.js';
 import Category from '../models/Category.js';
 import http from 'http';
 import https from 'https';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 
 const router = express.Router();
 
@@ -76,23 +79,57 @@ router.get('/image', async (req, res) => {
     try { parsed = new URL(url); } catch (e) { return res.status(400).send('Invalid url'); }
     if (!['http:', 'https:'].includes(parsed.protocol)) return res.status(400).send('Invalid protocol');
 
-    const client = parsed.protocol === 'https:' ? https : http;
-    const prox = client.get(parsed.href, (proxRes) => {
-      if (proxRes.statusCode >= 400) {
-        res.sendStatus(proxRes.statusCode);
-        return;
-      }
-      const ct = proxRes.headers['content-type'] || 'application/octet-stream';
-      res.setHeader('content-type', ct);
-      res.setHeader('cache-control', 'public, max-age=86400');
-      proxRes.pipe(res);
+    // Follow redirects and set browser-like headers to avoid blocking
+    const maxRedirects = 6;
+    let redirects = 0;
+
+    const fetchWithRedirects = (urlObj) => new Promise((resolve, reject) => {
+      const client = urlObj.protocol === 'https:' ? https : http;
+      const opts = {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+          'Accept': 'image/*,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.9'
+        }
+      };
+      const r = client.get(urlObj.href, opts, (upstream) => {
+        if (upstream.statusCode >= 300 && upstream.statusCode < 400 && upstream.headers.location) {
+          if (redirects >= maxRedirects) {
+            reject(new Error('Too many redirects'));
+            return;
+          }
+          redirects++;
+          try {
+            const next = new URL(upstream.headers.location, urlObj.href);
+            upstream.resume();
+            resolve(fetchWithRedirects(next));
+          } catch (e) { reject(e); }
+          return;
+        }
+        if (upstream.statusCode >= 400) {
+          const err = new Error(`HTTP ${upstream.statusCode}`);
+          err.status = upstream.statusCode;
+          reject(err);
+          return;
+        }
+        resolve(upstream);
+      });
+      r.on('error', reject);
+      r.setTimeout(10000, () => {
+        r.destroy();
+        reject(new Error('Upstream timeout'));
+      });
     });
-    prox.on('error', (err) => {
-      console.error('Image proxy error', err.message);
-      res.sendStatus(502);
-    });
+
+    const upstream = await fetchWithRedirects(parsed);
+    const ct = upstream.headers['content-type'] || 'image/jpeg';
+    res.setHeader('content-type', ct);
+    res.setHeader('cache-control', 'public, max-age=86400');
+    upstream.pipe(res);
   } catch (err) {
-    res.status(500).json({ message: 'Proxy error', error: err.message });
+    console.error('[image-proxy] error:', err && err.message ? err.message : err);
+    if (err && err.status) return res.sendStatus(err.status);
+    res.sendStatus(502);
   }
 });
 

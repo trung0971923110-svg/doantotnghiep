@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import mongoose from 'mongoose';
 import authRoutes from './src/routes/authRoutes.js';
 import inventoryRoutes from './src/routes/inventoryRoutes.js';
@@ -14,6 +15,12 @@ const PORT = process.env.PORT || 5000;
 // Enable CORS and JSON parsing
 app.use(cors());
 app.use(express.json());
+
+// Serve cached proxied images from backend/public/proxied_images
+// Serve entire public folder under /images (placeholder and other statics)
+app.use('/images', express.static(path.join(process.cwd(), 'public')));
+// Also keep a dedicated route for proxied images for compatibility
+app.use('/images/proxy', express.static(path.join(process.cwd(), 'public', 'proxied_images')));
 
 // Request logger middleware
 app.use((req, res, next) => {

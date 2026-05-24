@@ -7,7 +7,7 @@ export default function PCBuilder() {
   // States for Auto Build
   const [budget, setBudget] = useState(15000000);
   const [need, setNeed] = useState('gaming');
-  const [suggestedBuild, setSuggestedBuild] = useState(null);
+  const [suggestedBuilds, setSuggestedBuilds] = useState([]);
   const [autoError, setAutoError] = useState('');
   const [loadingSuggest, setLoadingSuggest] = useState(false);
 
@@ -75,12 +75,12 @@ export default function PCBuilder() {
     e.preventDefault();
     setAutoError('');
     setLoadingSuggest(true);
-    setSuggestedBuild(null);
+    setSuggestedBuilds([]);
 
     fetch('/api/pc-builder/suggest', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ budget: Number(budget), need })
+      body: JSON.stringify({ budget: Number(budget), need, count: 3 })
     })
       .then(res => {
         if (!res.ok) {
@@ -89,7 +89,7 @@ export default function PCBuilder() {
         return res.json();
       })
       .then(data => {
-        setSuggestedBuild(data);
+        setSuggestedBuilds(data || []);
         setLoadingSuggest(false);
       })
       .catch(err => {
@@ -218,7 +218,7 @@ export default function PCBuilder() {
             <div>
               <h2 style={{ fontSize: '1.4rem', marginBottom: '1rem' }}>Cấu Hình Đề Xuất Phù Hợp</h2>
               
-              {!suggestedBuild && !loadingSuggest && (
+              {suggestedBuilds.length === 0 && !loadingSuggest && (
                 <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '4rem 1rem' }}>
                   <Sparkles size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
                   <p>Chọn các thông số bên trái và bấm Đề xuất để nhận cấu hình tương thích tối ưu nhất.</p>
@@ -232,43 +232,51 @@ export default function PCBuilder() {
                 </div>
               )}
 
-              {suggestedBuild && (
-                <div className="table-container" style={{ maxHeight: '350px', overflowY: 'auto' }}>
-                  <table className="custom-table">
-                    <thead>
-                      <tr>
-                        <th>Linh kiện</th>
-                        <th>Tên sản phẩm</th>
-                        <th style={{ textAlign: 'right' }}>Giá thành</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.keys(suggestedBuild.components).map(cat => {
-                        const item = suggestedBuild.components[cat];
-                        if (!item) return null;
-                        return (
-                          <tr key={cat}>
-                            <td style={{ fontWeight: 600, color: 'var(--secondary)', textTransform: 'uppercase', fontSize: '0.8rem' }}>{cat}</td>
-                            <td>{item.name}</td>
-                            <td style={{ textAlign: 'right', fontWeight: 500 }}>{formatVND(item.price)}</td>
+              {suggestedBuilds.length > 0 && (
+                <div className="suggestions-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {suggestedBuilds.map((sugg, idx) => (
+                    <div key={idx} className="table-container" style={{ maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--glass-border)', padding: '0.75rem', borderRadius: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <strong>Đề xuất #{idx + 1}</strong>
+                        <span style={{ fontWeight: 700 }}>{formatVND(sugg.totalPrice)}</span>
+                      </div>
+                      <table className="custom-table">
+                        <thead>
+                          <tr>
+                            <th>Linh kiện</th>
+                            <th>Tên sản phẩm</th>
+                            <th style={{ textAlign: 'right' }}>Giá thành</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {Object.keys(sugg.components).map(cat => {
+                            const item = sugg.components[cat];
+                            if (!item) return null;
+                            return (
+                              <tr key={cat}>
+                                <td style={{ fontWeight: 600, color: 'var(--secondary)', textTransform: 'uppercase', fontSize: '0.8rem' }}>{cat}</td>
+                                <td>{item.name}</td>
+                                <td style={{ textAlign: 'right', fontWeight: 500 }}>{formatVND(item.price)}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
 
-            {suggestedBuild && (
+            {suggestedBuilds.length > 0 && (
               <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--glass-border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Tổng giá trị:</span>
-                  <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-success)' }}>{formatVND(suggestedBuild.totalPrice)}</span>
+                  <span style={{ color: 'var(--text-secondary)' }}>Đề xuất tốt nhất:</span>
+                  <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--color-success)' }}>{formatVND(suggestedBuilds[0].totalPrice)}</span>
                 </div>
                 <div className="compat-log compat-log-ok" style={{ margin: 0 }}>
                   <Check size={18} />
-                  <span>Cấu hình tương thích 100% (Đã kiểm tra Socket {suggestedBuild.components.cpu?.specs?.socket}, thế hệ RAM {suggestedBuild.components.mainboard?.specs?.ramType}, Nguồn điện dư {suggestedBuild.components.psu?.specs?.wattage}W)</span>
+                  <span>Cấu hình tương thích 100% (Đã kiểm tra Socket {suggestedBuilds[0].components.cpu?.attributes?.socket}, thế hệ RAM {suggestedBuilds[0].components.mainboard?.attributes?.ramType}, Nguồn điện dư {suggestedBuilds[0].components.psu?.attributes?.wattage}W)</span>
                 </div>
               </div>
             )}

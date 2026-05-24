@@ -1,9 +1,9 @@
-import { dbService } from './dbService.js';
+import Inventory from '../models/Inventory.js';
 
 export const cameraService = {
-  calculateSetup: (config) => {
+  calculateSetup: async (config) => {
     const { numRooms, numFloors, areaSqM, recordingDays, quality, type } = config;
-    const inventory = dbService.getCollection('inventory');
+    const inventory = await Inventory.find().lean();
 
     // Step 1: Suggest number of cameras
     // Recommendation: 1 camera per room + 1 camera for outdoor/gate
@@ -47,10 +47,10 @@ export const cameraService = {
 
     // Step 5: Cables & Accessories
     const cableItems = inventory.filter(item => item.category === 'cable');
-    // If IP, use CAT6 (cab-002), if Analog, use Coaxial (cab-001)
+    // If IP, use CAT6, if Analog, use Coaxial
     const selectedCable = type === 'IP' 
-      ? (cableItems.find(c => c.id === 'cab-002') || cableItems[0])
-      : (cableItems.find(c => c.id === 'cab-001') || cableItems[0]);
+      ? (cableItems.find(c => c.name.includes('CAT6') || c.name.includes('Cáp mạng')) || cableItems[0])
+      : (cableItems.find(c => c.name.includes('đồng trục') || c.name.includes('RG59')) || cableItems[0]);
 
     // Assume 20m cable per camera
     const estCableLength = totalCams * 20;
@@ -58,10 +58,10 @@ export const cameraService = {
 
     // Baluns / RJ45 / BNC connectors
     const connectorItem = type === 'IP'
-      ? inventory.find(i => i.id === 'acc-004') // RJ45
-      : inventory.find(i => i.id === 'acc-003'); // BNC
+      ? inventory.find(i => i.name.includes('RJ45') || i.name.includes('Hạt mạng')) // RJ45
+      : inventory.find(i => i.name.includes('BNC') || i.name.includes('Jack BNC')); // BNC
 
-    const connectorsQty = type === 'IP' ? totalCams * 2 : totalCams * 2; // 2 connectors per camera
+    const connectorsQty = totalCams * 2; // 2 connectors per camera
 
     // Step 6: Pricing
     const listItems = [];
@@ -104,7 +104,8 @@ export const cameraService = {
 
     // Add Connectors
     if (connectorItem) {
-      const qty = Math.ceil(connectorsQty / (connectorItem.id === 'acc-004' ? 100 : 10)); // assume boxes or packs
+      const isRJ45 = connectorItem.name.includes('RJ45') || connectorItem.name.includes('Hạt mạng');
+      const qty = Math.ceil(connectorsQty / (isRJ45 ? 100 : 10)); // assume boxes or packs
       const total = connectorItem.price * qty;
       listItems.push({ item: connectorItem, qty, total });
       subtotal += total;

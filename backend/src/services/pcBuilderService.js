@@ -1,4 +1,5 @@
-import Inventory from '../models/Inventory.js';
+import Product from '../models/Product.js';
+import Category from '../models/Category.js';
 
 export const pcBuilderService = {
 
@@ -10,7 +11,7 @@ export const pcBuilderService = {
       power:   { status: 'idle', message: 'Chưa đủ linh kiện để kiểm tra công suất nguồn' }
     };
 
-    const get = async (id) => id ? Inventory.findById(id).lean() : null;
+    const get = async (id) => id ? Product.findById(id).lean() : null;
 
     const [cpu, mainboard, ram, vga, psu] = await Promise.all([
       get(parts.cpu), get(parts.mainboard), get(parts.ram), get(parts.vga), get(parts.psu)
@@ -18,7 +19,7 @@ export const pcBuilderService = {
 
     // 1. Socket: CPU vs Mainboard
     if (cpu && mainboard) {
-      const cs = cpu.specs?.socket, ms = mainboard.specs?.socket;
+      const cs = cpu.attributes?.socket, ms = mainboard.attributes?.socket;
       if (cs && ms) {
         if (cs === ms) {
           details.socket = { status: 'ok', message: `Tương thích Socket (${cs})` };
@@ -31,7 +32,7 @@ export const pcBuilderService = {
 
     // 2. RAM type: Mainboard vs RAM
     if (mainboard && ram) {
-      const mr = mainboard.specs?.ramType, rr = ram.specs?.ramType;
+      const mr = mainboard.attributes?.ramType, rr = ram.attributes?.ramType;
       if (mr && rr) {
         if (mr === rr) {
           details.ramType = { status: 'ok', message: `Tương thích thế hệ RAM (${mr})` };
@@ -45,9 +46,9 @@ export const pcBuilderService = {
     // 3. Power budget
     if (psu) {
       let required = 100;
-      if (cpu) required += cpu.specs?.power || 65;
-      if (vga) required += vga.specs?.power || 75;
-      const pw = psu.specs?.wattage || 0;
+      if (cpu) required += cpu.attributes?.power || 65;
+      if (vga) required += vga.attributes?.power || 75;
+      const pw = psu.attributes?.wattage || 0;
       if (pw >= required) {
         details.power = { status: 'ok', message: `Nguồn đủ: Cần ~${required}W, PSU có ${pw}W` };
       } else {
@@ -59,9 +60,12 @@ export const pcBuilderService = {
     return { compatible: issues.length === 0, issues, details };
   },
 
-  suggestBuild: async (budget, need) => {
-    const byCategory = async (cat) =>
-      Inventory.find({ category: cat, stock: { $gt: 0 } }).sort({ price: -1 }).lean();
+  suggestBuild: async (budget, need, count = 3) => {
+    const byCategory = async (catName) => {
+      const category = await Category.findOne({ name: { $regex: new RegExp(`^${catName}$`, 'i') } });
+      if (!category) return [];
+      return Product.find({ category: category._id, status: 'active', stockQuantity: { $gt: 0 } }).sort({ price: -1 }).lean();
+    };
 
     const [cpus, mbs, rams, vgas, psus, ssds, cases] = await Promise.all([
       byCategory('cpu'), byCategory('mainboard'), byCategory('ram'),
@@ -79,35 +83,34 @@ export const pcBuilderService = {
 
     if (need === 'office') {
       cpuList = cpuList.filter(c => c.price < 4000000);
-      ramList = ramList.filter(r => r.specs?.capacity === '8GB' || r.specs?.capacity === '16GB');
-      psuList = psuList.filter(p => p.specs?.wattage <= 550);
+      ramList = ramList.filter(r => r.attributes?.capacity === 8 || r.attributes?.capacity === 16);
+      psuList = psuList.filter(p => p.attributes?.wattage <= 550);
     } else if (need === 'gaming') {
       vgaList = vgaList.filter(v => v && v.price > 4000000);
-      ramList = ramList.filter(r => r.specs?.capacity === '16GB' || r.specs?.capacity === '32GB');
+      ramList = ramList.filter(r => r.attributes?.capacity === 16 || r.attributes?.capacity === 32);
     } else if (need === 'design') {
       cpuList = cpuList.filter(c => c.price > 3000000);
-      ramList = ramList.filter(r => r.specs?.capacity === '16GB' || r.specs?.capacity === '32GB');
+      ramList = ramList.filter(r => r.attributes?.capacity === 16 || r.attributes?.capacity === 32);
       vgaList = vgaList.filter(v => v && v.price > 5000000);
     }
 
-    let best = null, maxPrice = 0;
+    const results = [];
 
     for (const c of cpuList) {
       for (const m of mbList) {
-        if (c.specs?.socket !== m.specs?.socket) continue;
+        if (c.attributes?.socket !== m.attributes?.socket) continue;
         for (const r of ramList) {
-          if (m.specs?.ramType !== r.specs?.ramType) continue;
+          if (m.attributes?.ramType !== r.attributes?.ramType) continue;
           for (const v of vgaList) {
             for (const p of psuList) {
-              let req = 100 + (c.specs?.power || 65);
-              if (v) req += v.specs?.power || 75;
-              if ((p.specs?.wattage || 0) < req) continue;
+              let req = 100 + (c.attributes?.power || 65);
+              if (v) req += v.attributes?.power || 75;
+              if ((p.attributes?.wattage || 0) < req) continue;
               for (const s of ssdList) {
                 for (const cs of caseList) {
                   const total = c.price + m.price + r.price + (v ? v.price : 0) + p.price + s.price + cs.price;
-                  if (total <= budget && total > maxPrice) {
-                    maxPrice = total;
-                    best = { components: { cpu: c, mainboard: m, ram: r, vga: v, psu: p, ssd: s, case: cs }, totalPrice: total, budget };
+                  if (total <= budget) {
+                    results.push({ components: { cpu: c, mainboard: m, ram: r, vga: v, psu: p, ssd: s, case: cs }, totalPrice: total, budget });
                   }
                 }
               }
@@ -116,6 +119,8 @@ export const pcBuilderService = {
         }
       }
     }
-    return best;
+    // Sort results by totalPrice desc (prefer higher utilization of budget) then return top `count`
+    results.sort((a, b) => b.totalPrice - a.totalPrice);
+    return results.slice(0, count);
   }
 };

@@ -3,6 +3,7 @@ import { Cpu, Wrench, Video, ShieldAlert, CheckCircle, Clock } from 'lucide-reac
 
 // Helper to format prices
 const fmt = (v) => v ? v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '₫' : 'Liên hệ';
+const placeholderFor = (name) => `https://via.placeholder.com/400x300?text=${encodeURIComponent(name || 'No+Image')}`;
 
 export default function Home({ setPage }) {
   const [products, setProducts] = useState([]);
@@ -107,7 +108,11 @@ export default function Home({ setPage }) {
           {products.slice(0, 12).map((p) => (
             <div key={p._id || p.name} className="product-card">
               <div className="product-image" aria-hidden>
-                <div className="image-placeholder">{(p.name || '').split(' ').slice(0,2).map(s=>s[0]||'').join('')}</div>
+                <img
+                  src={p.image || placeholderFor(p.name)}
+                  alt={p.name}
+                  onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://via.placeholder.com/400x300?text=No+Image'; }}
+                />
               </div>
               <div className="product-info">
                 <div className="product-name">{p.name}</div>
@@ -128,7 +133,13 @@ export default function Home({ setPage }) {
           <div className="category-row">
             {grouped[cat].slice(0,6).map((p) => (
               <div className="category-card" key={p._id || p.name}>
-                <div className="category-thumb"><div className="image-placeholder small">{(p.name||'').split(' ').slice(0,2).map(s=>s[0]||'').join('')}</div></div>
+                <div className="category-thumb">
+                  <img
+                    src={p.image || placeholderFor(p.name)}
+                    alt={p.name}
+                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image'; }}
+                  />
+                </div>
                 <div className="cat-name">{p.name}</div>
                 <div className="cat-price">{fmt(p.price)}</div>
               </div>

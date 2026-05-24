@@ -111,6 +111,16 @@ async function seed() {
   const products = await Product.insertMany(productsData);
   console.log(`✅ Seeded ${products.length} products.`);
 
+  // Add placeholder images for products that don't have an image field
+  console.log('🖼️ Ensuring product images are set...');
+  for (const p of products) {
+    if (!p.image) {
+      const url = `https://via.placeholder.com/400x300?text=${encodeURIComponent(p.name)}`;
+      await Product.findByIdAndUpdate(p._id, { image: url });
+    }
+  }
+  console.log('✅ Product images ensured.');
+
   // Seed Needs
   console.log('🎯 Seeding needs...');
   const needs = await Need.insertMany(needsData);

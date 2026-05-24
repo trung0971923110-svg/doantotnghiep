@@ -1,6 +1,15 @@
 import React from 'react';
 
-const fmt = (v) => v ? v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '₫' : 'Liên hệ';
+const fmt = (v) => {
+  if (!v) return 'Liên hệ';
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND',
+    minimumFractionDigits: 0
+  }).format(v);
+};
+
+const getPlaceholder = (name) => `https://placehold.co/400x300?text=${encodeURIComponent(name || 'Linh kien')}`;
 
 export default function SuggestionDetail({ suggestion, setPage }) {
   if (!suggestion) return (
@@ -19,9 +28,9 @@ export default function SuggestionDetail({ suggestion, setPage }) {
           {(() => {
             const comps = suggestion.components || {};
             const hero = comps.vga || comps.cpu || Object.values(comps).find(c => c);
-            const heroImg = hero?.image || '/images/placeholder.svg';
+            const heroImg = (hero && hero.image) ? hero.image : getPlaceholder('PC Build');
             return (
-              <img src={`/api/pc-builder/image?url=${encodeURIComponent(heroImg)}`} alt="Build hero" style={{ width: 220, height: 140, objectFit: 'cover', borderRadius: 10 }} onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/images/placeholder.svg'; }} />
+              <img src={heroImg} alt="Build hero" style={{ width: 220, height: 140, objectFit: 'cover', borderRadius: 10 }} />
             );
           })()}
           <div style={{ flex: 1 }}>
@@ -82,12 +91,7 @@ export default function SuggestionDetail({ suggestion, setPage }) {
                 <td style={{ padding: '10px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--primary)', fontSize: '0.82rem' }}>{k}</td>
                 <td style={{ padding: '10px' }}>
                   {comp ? (
-                    <img
-                      src={comp.image ? `/api/pc-builder/image?url=${encodeURIComponent(comp.image)}` : '/images/placeholder.svg'}
-                      alt={comp.name}
-                      style={{ width: 72, height: 56, objectFit: 'cover', borderRadius: 6 }}
-                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = '/images/placeholder.svg'; }}
-                    />
+                    <img src={comp.image || getPlaceholder(comp.name)} alt={comp.name} style={{ width: 72, height: 56, objectFit: 'cover', borderRadius: 6 }} onError={(e) => { e.currentTarget.src = getPlaceholder(comp.name); }} />
                   ) : '—'}
                 </td>
                 <td style={{ padding: '10px' }}>

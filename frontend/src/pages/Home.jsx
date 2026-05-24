@@ -3,9 +3,9 @@ import { Cpu, Wrench, Video, ShieldAlert, CheckCircle, Clock } from 'lucide-reac
 
 // Helper to format prices
 const fmt = (v) => v ? v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '₫' : 'Liên hệ';
-const placeholderFor = (name) => `/images/placeholder.svg`;
+const placeholderFor = (name) => `https://placehold.co/400x300?text=${encodeURIComponent(name || 'San Pham')}`;
 
-export default function Home({ setPage, selectedCategory, setSelectedCategory, setSelectedProductId, setSelectedSuggestion, selectedBrand, setSelectedBrand, productUpdateSignal, lastUpdatedProduct }) {
+export default function Home({ setPage, selectedCategory, setSelectedCategory, setSelectedProductId, setSelectedSuggestion, selectedBrand, setSelectedBrand, selectedCapacity, setSelectedCapacity, productUpdateSignal, lastUpdatedProduct }) {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const featuredRef = useRef(null);
@@ -17,8 +17,10 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
         setLoadingProducts(true);
         const parts = [];
         if (selectedCategory) parts.push(`category=${encodeURIComponent(selectedCategory)}`);
-        // server-side brand filter when viewing CPU category
-        if (selectedCategory === 'cpu' && selectedBrand && selectedBrand !== 'all') parts.push(`brand=${encodeURIComponent(selectedBrand)}`);
+        // server-side filters for specific categories
+        if ((selectedCategory === 'cpu' || selectedCategory === 'ram') && selectedBrand && selectedBrand !== 'all') parts.push(`brand=${encodeURIComponent(selectedBrand)}`);
+        if (selectedCategory === 'ram' && selectedCapacity && selectedCapacity !== 'all') parts.push(`capacity=${encodeURIComponent(selectedCapacity)}`);
+
         const q = parts.length ? `?${parts.join('&')}` : '';
         const res = await fetch('/api/pc-builder/products' + q);
         if (!res.ok) {
@@ -36,7 +38,7 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
     }
     load();
     return () => { cancelled = true; };
-  }, [selectedCategory, selectedBrand, productUpdateSignal]);
+  }, [selectedCategory, selectedBrand, selectedCapacity, productUpdateSignal]);
 
   // when a category is selected and products loaded, scroll to featured strip
   useEffect(() => {
@@ -45,11 +47,31 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
         try { featuredRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { /* ignore */ }
       }, 200);
     }
-    // reset brand filter when switching away from CPU category
+    // reset filters when switching away from categories with specific filters
     try {
-      if (selectedCategory !== 'cpu') setSelectedBrand('all');
+      if (selectedCategory !== 'cpu' && selectedCategory !== 'ram') {
+        setSelectedBrand('all');
+        setSelectedCapacity('all');
+      }
     } catch(e) { /* ignore if prop not provided */ }
   }, [selectedCategory, loadingProducts]);
+
+  // Horizontal scroll for all product strips when using mouse wheel
+  useEffect(() => {
+    const handleWheel = (e) => {
+      if (e.deltaY === 0) return;
+      e.preventDefault();
+      e.currentTarget.scrollLeft += e.deltaY;
+    };
+    
+    // Select both featured strip and all category rows
+    const strips = document.querySelectorAll('.featured-strip, .category-row');
+    strips.forEach(s => s.addEventListener('wheel', handleWheel, { passive: false }));
+    
+    return () => {
+      strips.forEach(s => s.removeEventListener('wheel', handleWheel));
+    };
+  }, [loadingProducts, selectedCategory, products]);
 
   const [suggestions, setSuggestions] = useState([]);
   useEffect(() => {
@@ -76,15 +98,13 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
   const filtered = products;
 
   const grouped = filtered.reduce((acc, p) => {
-    const k = (p.category || 'other').toUpperCase();
+    const k = String(p.category || 'other').toUpperCase();
     (acc[k] = acc[k] || []).push(p);
     return acc;
   }, {});
   const getImageSrc = (p) => {
-    if (!p || !p.image) return placeholderFor(p?.name);
-    if (/^https?:\/\//i.test(p.image)) return `/api/pc-builder/image?url=${encodeURIComponent(p.image)}`;
-    // assume relative path served by backend (e.g. /images/proxy/xxx)
-    return p.image;
+    if (p && p.image && p.image !== '') return p.image;
+    return placeholderFor(p?.name);
   };
   return (
     <div className="home-page">
@@ -112,15 +132,16 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
       {/* Suggested builds (hidden when a category filter is active) */}
       {(!selectedCategory && suggestions && suggestions.length > 0) && (
         <section style={{ marginTop: '2rem', marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem' }}>Gợi ý cấu hình (ví dụ: Gaming ~15.000.000₫)</h2>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem' }}>Cấu hình PC gợi ý (Gaming ~15.000.000₫)</h2>
           <div className="grid-3" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
             {suggestions.map((s, i) => {
               // choose a hero component (prefer vga, then cpu, else first)
               const comps = s.components || {};
               const hero = comps.vga || comps.cpu || Object.values(comps).find(c => c);
-              const heroImg = hero?.image || '/images/placeholder.svg';
+              const heroImg = getImageSrc(hero);
               const vendor = hero?.brand || '';
-              const title = hero?.name || `Gợi ý #${i+1}`;
+              const title = `Cấu hình #${i+1}`;
+              const detailText = hero?.name ? `Dựa trên ${hero.name}` : 'Cấu hình tối ưu';
               const price = s.totalPrice || 0;
               const oldPrice = Math.round(price * 1.12);
               const discount = Math.round((oldPrice - price) / oldPrice * 100);
@@ -135,7 +156,8 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
                     </div>
                     <div style={{ padding: '0.6rem 0 0.25rem' }}>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 700 }}>{vendor}</div>
-                      <div style={{ fontWeight: 700, marginTop: '6px', minHeight: '40px' }}>{title}</div>
+                      <div style={{ fontWeight: 800, marginTop: '4px', fontSize: '1.05rem', color: 'var(--secondary)' }}>{title}</div>
+                      <div style={{ fontWeight: 500, fontSize: '0.85rem', marginTop: '2px', minHeight: '34px', color: 'var(--text-secondary)', lineHeight: '1.3' }}>{detailText}</div>
                       <div style={{ marginTop: '8px' }}>
                         <div style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '1rem' }}>{fmt(price)}</div>
                         <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}><s>{fmt(oldPrice)}</s> <span style={{ color: 'var(--color-danger)', marginLeft: '6px' }}>-{discount}%</span></div>
@@ -162,13 +184,15 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
         </div>
       )}
 
-      {/* Brand pills for CPU category */}
-      {selectedCategory === 'cpu' && (
-        <div style={{ margin: '0.75rem 0', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <button className={`btn ${selectedBrand === 'all' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSelectedBrand('all')}>Tất cả</button>
-          <button className={`btn ${selectedBrand === 'intel' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSelectedBrand('intel')}>Intel</button>
-          <button className={`btn ${selectedBrand === 'amd' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSelectedBrand('amd')}>AMD</button>
-          <button className={`btn ${selectedBrand === 'other' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSelectedBrand('other')}>Khác</button>
+      {/* Capacity pills for RAM category */}
+      {selectedCategory === 'ram' && (
+        <div style={{ margin: '0.5rem 0 1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginRight: '0.5rem' }}>Dung lượng:</span>
+          {['all', '8', '16', '32'].map(cap => (
+            <button key={cap} className={`btn ${selectedCapacity === cap ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSelectedCapacity(cap)}>
+              {cap === 'all' ? 'Tất cả' : `${cap}GB`}
+            </button>
+          ))}
         </div>
       )}
 
@@ -182,7 +206,7 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
           )}
         </div>
 
-        <div className="featured-strip" ref={featuredRef} id="featured-strip">
+        <div className="featured-strip" ref={featuredRef} id="featured-strip" style={{ overflowX: 'auto', display: 'flex', scrollBehavior: 'smooth' }}>
           {filtered.slice(0, 12).map((p) => (
             <div key={p._id || p.name} className="product-card" style={{ cursor: 'pointer' }} onClick={() => { setSelectedProductId && setSelectedProductId(p._id); setPage('product'); }}>
               <div className="product-image" aria-hidden>
@@ -190,9 +214,7 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
                   src={getImageSrc(p)}
                   alt={p.name}
                   onError={(e) => {
-                    console.warn('Image load failed, falling back:', e.currentTarget.src);
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = '/images/placeholder.svg';
+                    if (e.currentTarget.src !== placeholderFor(p.name)) e.currentTarget.src = placeholderFor(p.name);
                   }}
                 />
               </div>
@@ -212,17 +234,17 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
           <div className="category-header">
             <span className="category-pill">{cat}</span>
               </div>
-          <div className="category-row">
-            {grouped[cat].slice(0,6).map((p) => (
+          <div className="category-row" style={{ overflowX: 'auto', display: 'flex', scrollBehavior: 'smooth', gap: '1rem', paddingBottom: '1rem' }}>
+            {grouped[cat].map((p) => (
               <div className="category-card" key={p._id || p.name} style={{ cursor: 'pointer' }} onClick={() => { setSelectedProductId && setSelectedProductId(p._id); setPage('product'); }}>
                 <div className="category-thumb">
                   <img
                     src={getImageSrc(p)}
                     alt={p.name}
                     onError={(e) => {
-                      console.warn('Category image load failed, falling back:', e.currentTarget.src);
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = '/images/placeholder.svg';
+                    if (e.currentTarget.src !== placeholderFor(p.name)) {
+                      e.currentTarget.src = placeholderFor(p.name);
+                    }
                     }}
                   />
                 </div>
@@ -284,10 +306,10 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
       </section>
 
       {/* Info Section */}
-      <section className="info-section glass-card" style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', alignItems: 'center', padding: '3rem', borderLeft: '4px solid var(--primary)' }}>
-        <div style={{ flex: '1 1 400px' }}>
-          <h2 style={{ fontSize: '1.8rem', marginBottom: '1rem' }}>Quy trình đồng bộ cho Cửa hàng và Khách hàng</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+      <section className="info-section glass-card" style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', alignItems: 'center', padding: '1.5rem 2rem', borderLeft: '4px solid var(--primary)', marginBottom: '2rem' }}>
+        <div style={{ flex: '1 1 350px' }}>
+          <h2 style={{ fontSize: '1.25rem', marginBottom: '0.75rem' }}>Quy trình đồng bộ cho Cửa hàng và Khách hàng</h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: 1.5, fontSize: '0.9rem' }}>
             Hệ thống giải quyết triệt để vấn đề mất cân đối tồn kho, thiếu minh bạch trong sửa chữa và lắp đặt thiết bị. Admin, Kỹ thuật viên và Khách hàng đều thao tác trên một cơ sở dữ liệu đồng nhất.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -309,13 +331,13 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
             </div>
           </div>
         </div>
-        <div style={{ flex: '1 1 300px', background: 'rgba(7, 9, 14, 0.4)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ flex: '1 1 280px', background: 'rgba(7, 9, 14, 0.4)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Clock size={20} style={{ color: 'var(--secondary)' }} />
             Tài Khoản Đăng Nhập Demo
           </h3>
-          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'col', gap: '0.75rem', paddingLeft: 0 }}>
-            <li style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
+          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingLeft: 0, fontSize: '0.9rem' }}>
+            <li style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.4rem' }}>
               <span style={{ fontWeight: 600, color: 'var(--primary)' }}>Chủ Cửa Hàng (Admin):</span><br />
               Tài khoản: <code style={{ color: 'var(--text-primary)' }}>admin</code> / Mật khẩu: <code style={{ color: 'var(--text-primary)' }}>admin123</code>
             </li>
@@ -324,7 +346,7 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
               Tài khoản: <code style={{ color: 'var(--text-primary)' }}>tech1</code> / Mật khẩu: <code style={{ color: 'var(--text-primary)' }}>tech123</code>
             </li>
           </ul>
-          <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: '1rem' }} onClick={() => setPage('dashboard')}>
+          <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: '0.75rem' }} onClick={() => setPage('dashboard')}>
             Vào Trang Quản Trị Portal
           </button>
         </div>

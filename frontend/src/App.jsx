@@ -16,6 +16,8 @@ export default function App() {
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [selectedBrand, setSelectedBrand] = useState('all');
   const [cpuExpanded, setCpuExpanded] = useState(false);
+  const [ramExpanded, setRamExpanded] = useState(false);
+  const [selectedCapacity, setSelectedCapacity] = useState('all');
   
   const [selectedProductId, setSelectedProductId] = useState(null);
   const [selectedSuggestion, setSelectedSuggestion] = useState(null);
@@ -59,7 +61,7 @@ export default function App() {
   const renderPage = () => {
     switch (page) {
       case 'home':
-        return <Home setPage={setPage} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} setSelectedProductId={setSelectedProductId} setSelectedSuggestion={setSelectedSuggestion} selectedBrand={selectedBrand} setSelectedBrand={setSelectedBrand} productUpdateSignal={productUpdateSignal} lastUpdatedProduct={lastUpdatedProduct} />;
+        return <Home setPage={setPage} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} setSelectedProductId={setSelectedProductId} setSelectedSuggestion={setSelectedSuggestion} selectedBrand={selectedBrand} setSelectedBrand={setSelectedBrand} selectedCapacity={selectedCapacity} setSelectedCapacity={setSelectedCapacity} productUpdateSignal={productUpdateSignal} lastUpdatedProduct={lastUpdatedProduct} />;
       case 'product':
         return <ProductDetail productId={selectedProductId} setPage={setPage} productUpdateSignal={productUpdateSignal} lastUpdatedProduct={lastUpdatedProduct} />;
       case 'suggestion':
@@ -134,32 +136,57 @@ export default function App() {
       </header>
 
       {/* Main Page Area with left sidebar */}
-      <div className="site-body">
-        <aside className="left-sidebar" style={{ display: sidebarVisible ? 'block' : 'none' }}>
+      <div className="site-body" style={{ paddingLeft: 0, gap: '1rem' }}>
+        <aside className="left-sidebar" style={{ display: sidebarVisible ? 'block' : 'none', width: '115px', flexShrink: 0, padding: '0.5rem 0.2rem 0.5rem 0', borderRadius: '0 10px 10px 0', borderRight: '1px solid var(--glass-border)' }}>
           <ul className="left-cats">
-            <li className={selectedCategory === null ? 'cat-item active' : 'cat-item'} onClick={() => { setSelectedCategory(null); setSelectedBrand('all'); setPage('home'); }}><span className="cat-label">Tất cả</span></li>
-            <li className={selectedCategory === 'cpu' ? 'cat-item active' : 'cat-item'}>
+            <li className={selectedCategory === null ? 'cat-item active' : 'cat-item'} style={{ padding: '5px 4px 5px 10px', borderLeft: 'none', borderRadius: '0 6px 6px 0', marginBottom: '2px' }} onClick={() => { setSelectedCategory(null); setSelectedBrand('all'); setSelectedCapacity('all'); setPage('home'); }}><span className="cat-label" style={{ fontSize: '0.85rem' }}>Tất cả</span></li>
+            <li className={selectedCategory === 'cpu' ? 'cat-item active' : 'cat-item'} style={{ padding: '5px 4px 5px 10px', borderRadius: '0 6px 6px 0', marginBottom: '2px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div onClick={() => { setSelectedCategory('cpu'); setSelectedBrand('all'); setCpuExpanded(false); setPage('home'); }} style={{ cursor: 'pointer' }}>
-                  <span className="cat-label">CPU</span>
+                <div onClick={() => { setSelectedCategory('cpu'); setSelectedBrand('all'); setSelectedCapacity('all'); setCpuExpanded(false); setPage('home'); }} style={{ cursor: 'pointer' }}>
+                  <span className="cat-label" style={{ fontSize: '0.85rem' }}>CPU</span>
                 </div>
-                <button aria-label="Toggle CPU brands" title="Hiện/ẩn hãng CPU" className="btn btn-ghost" onClick={() => setCpuExpanded(v => !v)} style={{ padding: 6 }}>
+                <button aria-label="Toggle CPU brands" title="Hiện/ẩn hãng CPU" className="btn btn-ghost" onClick={() => setCpuExpanded(v => !v)} style={{ padding: 4 }}>
                   {cpuExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </button>
               </div>
               {cpuExpanded && (
-                <ul style={{ listStyle: 'none', paddingLeft: '0.75rem', marginTop: '0.5rem' }}>
-                  <li className={selectedBrand === 'intel' ? 'cat-sub active' : 'cat-sub'} onClick={() => { setSelectedCategory('cpu'); setSelectedBrand('intel'); setPage('home'); }} style={{ cursor: 'pointer', padding: '6px 8px', borderRadius: 8 }}>Intel</li>
-                  <li className={selectedBrand === 'amd' ? 'cat-sub active' : 'cat-sub'} onClick={() => { setSelectedCategory('cpu'); setSelectedBrand('amd'); setPage('home'); }} style={{ cursor: 'pointer', padding: '6px 8px', borderRadius: 8 }}>AMD</li>
+                <ul style={{ listStyle: 'none', paddingLeft: '0.25rem', marginTop: '0.15rem' }}>
+                  <li className={selectedBrand === 'intel' ? 'cat-sub active' : 'cat-sub'} onClick={() => { setSelectedCategory('cpu'); setSelectedBrand('intel'); setPage('home'); }} style={{ cursor: 'pointer', padding: '3px 6px', borderRadius: '0 5px 5px 0', fontSize: '0.8rem' }}>Intel</li>
+                  <li className={selectedBrand === 'amd' ? 'cat-sub active' : 'cat-sub'} onClick={() => { setSelectedCategory('cpu'); setSelectedBrand('amd'); setPage('home'); }} style={{ cursor: 'pointer', padding: '3px 6px', borderRadius: '0 5px 5px 0', fontSize: '0.8rem' }}>AMD</li>
                 </ul>
               )}
             </li>
-            <li className={selectedCategory === 'vga' ? 'cat-item active' : 'cat-item'} onClick={() => { setSelectedCategory('vga'); setPage('home'); }}><span className="cat-label">VGA</span></li>
-            <li className={selectedCategory === 'ram' ? 'cat-item active' : 'cat-item'} onClick={() => { setSelectedCategory('ram'); setPage('home'); }}><span className="cat-label">RAM</span></li>
-            <li className={selectedCategory === 'ssd' ? 'cat-item active' : 'cat-item'} onClick={() => { setSelectedCategory('ssd'); setPage('home'); }}><span className="cat-label">SSD</span></li>
-            <li className={selectedCategory === 'case' ? 'cat-item active' : 'cat-item'} onClick={() => { setSelectedCategory('case'); setPage('home'); }}><span className="cat-label">CASE</span></li>
-            <li className={selectedCategory === 'psu' ? 'cat-item active' : 'cat-item'} onClick={() => { setSelectedCategory('psu'); setPage('home'); }}><span className="cat-label">NGUỒN</span></li>
-            <li className={selectedCategory === 'mainboard' ? 'cat-item active' : 'cat-item'} onClick={() => { setSelectedCategory('mainboard'); setPage('home'); }}><span className="cat-label">MAINBOARD</span></li>
+            <li className={selectedCategory === 'vga' ? 'cat-item active' : 'cat-item'} style={{ padding: '5px 4px 5px 10px', borderRadius: '0 6px 6px 0', marginBottom: '2px' }} onClick={() => { setSelectedCategory('vga'); setSelectedBrand('all'); setSelectedCapacity('all'); setPage('home'); }}><span className="cat-label" style={{ fontSize: '0.85rem' }}>VGA</span></li>
+            <li className={selectedCategory === 'ram' ? 'cat-item active' : 'cat-item'} style={{ padding: '5px 4px 5px 10px', borderRadius: '0 6px 6px 0', marginBottom: '2px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div onClick={() => { setSelectedCategory('ram'); setSelectedBrand('all'); setSelectedCapacity('all'); setRamExpanded(false); setPage('home'); }} style={{ cursor: 'pointer' }}>
+                  <span className="cat-label" style={{ fontSize: '0.85rem' }}>RAM</span>
+                </div>
+                <button aria-label="Toggle RAM brands" title="Hiện/ẩn hãng RAM" className="btn btn-ghost" onClick={() => setRamExpanded(v => !v)} style={{ padding: 4 }}>
+                  {ramExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+              </div>
+              {ramExpanded && (
+                <ul style={{ listStyle: 'none', paddingLeft: '0.25rem', marginTop: '0.15rem', maxHeight: '200px', overflowY: 'auto', borderLeft: '1px dashed var(--glass-border)' }}>
+                  {[
+                    'Corsair', 'Kingston', 'G.Skill', 'Kingmax', 'Crucial', 'TeamGroup', 'ADATA', 'Lexar', 'Mushkin', 'GeIL', 'PNY', 'Apacer', 'Patriot', 'Gigabyte', 'ASUS'
+                  ].map(brand => (
+                    <li 
+                      key={brand}
+                      className={selectedBrand === brand.toLowerCase() ? 'cat-sub active' : 'cat-sub'} 
+                      onClick={() => { setSelectedCategory('ram'); setSelectedBrand(brand.toLowerCase()); setPage('home'); }} 
+                      style={{ cursor: 'pointer', padding: '3px 6px', borderRadius: '0 5px 5px 0', fontSize: '0.78rem' }}
+                    >
+                      {brand}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+            <li className={selectedCategory === 'ssd' ? 'cat-item active' : 'cat-item'} style={{ padding: '5px 4px 5px 10px', borderRadius: '0 6px 6px 0', marginBottom: '2px' }} onClick={() => { setSelectedCategory('ssd'); setSelectedBrand('all'); setSelectedCapacity('all'); setPage('home'); }}><span className="cat-label" style={{ fontSize: '0.85rem' }}>SSD</span></li>
+            <li className={selectedCategory === 'case' ? 'cat-item active' : 'cat-item'} style={{ padding: '5px 4px 5px 10px', borderRadius: '0 6px 6px 0', marginBottom: '2px' }} onClick={() => { setSelectedCategory('case'); setSelectedBrand('all'); setSelectedCapacity('all'); setPage('home'); }}><span className="cat-label" style={{ fontSize: '0.85rem' }}>CASE</span></li>
+            <li className={selectedCategory === 'psu' ? 'cat-item active' : 'cat-item'} style={{ padding: '5px 4px 5px 10px', borderRadius: '0 6px 6px 0', marginBottom: '2px' }} onClick={() => { setSelectedCategory('psu'); setSelectedBrand('all'); setSelectedCapacity('all'); setPage('home'); }}><span className="cat-label" style={{ fontSize: '0.85rem' }}>NGUỒN</span></li>
+            <li className={selectedCategory === 'mainboard' ? 'cat-item active' : 'cat-item'} style={{ padding: '5px 4px 5px 10px', borderRadius: '0 6px 6px 0', marginBottom: '2px' }} onClick={() => { setSelectedCategory('mainboard'); setSelectedBrand('all'); setSelectedCapacity('all'); setPage('home'); }}><span className="cat-label" style={{ fontSize: '0.85rem' }}>MAINBOARD</span></li>
           </ul>
         </aside>
         <main className="main-content">

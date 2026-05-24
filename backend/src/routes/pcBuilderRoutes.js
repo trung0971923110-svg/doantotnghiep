@@ -79,6 +79,10 @@ router.get('/products', async (req, res) => {
         filter.brand = { $in: brands.map(b => new RegExp(`^${b}$`, 'i')) };
       }
     }
+    // optional capacity filter (numeric)
+    if (req.query.capacity && req.query.capacity !== 'all') {
+      filter['attributes.capacity'] = Number(req.query.capacity);
+    }
 
     const q = Product.find(filter).sort({ price: -1 }).limit(Number(limit) || 0).lean();
     const products = await q;
@@ -210,5 +214,3 @@ router.post('/products/by-name/image', upload.single('image'), async (req, res) 
 });
 
 export default router;
-
-

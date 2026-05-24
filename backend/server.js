@@ -58,7 +58,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/sanpha
 
 async function startServerWithUri(uri) {
   await mongoose.connect(uri);
-  console.log('✅ Connected to MongoDB.');
+  console.log(`✅ Connected to MongoDB at: ${uri}`);
   // Try to establish a MongoDB change stream to broadcast external DB updates
   try {
     const changeStream = Product.watch([], { fullDocument: 'updateLookup' });

@@ -6,7 +6,6 @@ import http from 'http';
 import https from 'https';
 import fs from 'fs';
 import path from 'path';
-import crypto from 'crypto';
 import multer from 'multer';
 
 const router = express.Router();
@@ -82,6 +81,10 @@ router.get('/products', async (req, res) => {
     // optional capacity filter (numeric)
     if (req.query.capacity && req.query.capacity !== 'all') {
       filter['attributes.capacity'] = Number(req.query.capacity);
+    }
+    // optional series filter (e.g. i3, i5, i7, r5, r7) - Lọc theo tên sản phẩm
+    if (req.query.series && req.query.series !== 'all' && category === 'cpu') {
+      filter.name = { $regex: new RegExp(req.query.series, 'i') };
     }
 
     const q = Product.find(filter).sort({ price: -1 }).limit(Number(limit) || 0).lean();

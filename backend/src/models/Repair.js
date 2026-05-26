@@ -39,7 +39,7 @@ const RepairSchema = new mongoose.Schema({
 // Auto-generate repairCode before saving
 RepairSchema.pre('save', async function (next) {
   if (!this.repairCode) {
-    const last = await mongoose.model('Repair').findOne({}, {}, { sort: { createdAt: -1 } });
+    const last = await mongoose.model('Repair').findOne().sort({ createdAt: -1 }).select('repairCode');
     let num = 1001;
     if (last && last.repairCode) {
       const match = last.repairCode.match(/\d+/);

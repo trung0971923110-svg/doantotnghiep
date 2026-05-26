@@ -95,17 +95,16 @@ export const pcBuilderService = {
     }
 
     const results = [];
-
     for (const c of cpuList) {
-      for (const m of mbList) {
-        if (c.attributes?.socket !== m.attributes?.socket) continue;
-        for (const r of ramList) {
-          if (m.attributes?.ramType !== r.attributes?.ramType) continue;
+      const compatibleMbs = mbList.filter(m => m.attributes?.socket === c.attributes?.socket);
+      for (const m of compatibleMbs) {
+        const compatibleRams = ramList.filter(r => r.attributes?.ramType === m.attributes?.ramType);
+        for (const r of compatibleRams) {
           for (const v of vgaList) {
-            for (const p of psuList) {
-              let req = 100 + (c.attributes?.power || 65);
-              if (v) req += v.attributes?.power || 75;
-              if ((p.attributes?.wattage || 0) < req) continue;
+            const powerRequired = 100 + (c.attributes?.power || 65) + (v ? (v.attributes?.power || 75) : 0);
+            const compatiblePsus = psuList.filter(p => (p.attributes?.wattage || 0) >= powerRequired);
+            
+            for (const p of compatiblePsus) {
               for (const s of ssdList) {
                 for (const cs of caseList) {
                   const total = c.price + m.price + r.price + (v ? v.price : 0) + p.price + s.price + cs.price;

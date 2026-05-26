@@ -40,13 +40,15 @@ async function seed() {
 
   // Clear existing collections
   console.log('🗑️ Clearing existing collections...');
-  await Promise.all([
-    Category.deleteMany({}),
-    Product.deleteMany({}),
-    Need.deleteMany({}),
-    RecommendationRule.deleteMany({}),
-    User.deleteMany({})
-  ]);
+  // CHỈ XÓA KHI THỰC SỰ MUỐN RESET TOÀN BỘ. 
+  // Nếu muốn thêm sản phẩm mới mà giữ link ảnh cũ, hãy comment các dòng deleteMany.
+  // await Promise.all([
+  //   Category.deleteMany({}),
+  //   Product.deleteMany({}),
+  //   Need.deleteMany({}),
+  //   RecommendationRule.deleteMany({}),
+  //   User.deleteMany({})
+  // ]);
   console.log('🗑️ Collections cleared.');
 
   // Seed Users
@@ -64,6 +66,10 @@ async function seed() {
 
   const productsData = [
     // CPUs
+    { name: 'Intel Core i3-10100F', image: 'https://via.placeholder.com/400x300?text=Core+i5+11400F', category: getCatId('CPU'), brand: 'Intel', price: 2650000, stockQuantity: 15, specs: '6 Cores, 12 Threads, Socket LGA1200', description: 'CPU Intel Gen 11 tầm trung mạnh mẽ', attributes: { socket: 'LGA1200', power: 65, cores: 6 } },
+    { name: 'Intel Core i5-13600K', image: 'https://via.placeholder.com/400x300?text=Core+i5+13600K', category: getCatId('CPU'), brand: 'Intel', price: 7850000, stockQuantity: 7, specs: '14 Cores, 20 Threads, Socket LGA1700', description: 'CPU Intel Gen 13 hiệu năng cực cao cho gaming và làm việc', attributes: { socket: 'LGA1700', power: 125, cores: 14 } },
+    { name: 'Intel Core i7-12700K', image: 'https://via.placeholder.com/400x300?text=Core+i7+12700K', category: getCatId('CPU'), brand: 'Intel', price: 7290000, stockQuantity: 5, specs: '12 Cores, 20 Threads, Socket LGA1700', description: 'CPU Intel Gen 12 cao cấp cho đồ họa và chơi game nặng', attributes: { socket: 'LGA1700', power: 125, cores: 12 } },
+    { name: 'Intel Core i7-13700', image: 'https://via.placeholder.com/400x300?text=Core+i7+13700', category: getCatId('CPU'), brand: 'Intel', price: 9890000, stockQuantity: 4, specs: '16 Cores, 24 Threads, Socket LGA1700', description: 'CPU Intel Gen 13 mạnh mẽ vượt trội', attributes: { socket: 'LGA1700', power: 65, cores: 16 } },
     { name: 'Intel Core i3-12100F', image: 'https://via.placeholder.com/400x300?text=Core+i3+12100F', category: getCatId('CPU'), brand: 'Intel', price: 2150000, stockQuantity: 15, specs: '4 Cores, 8 Threads, Socket LGA1700', description: 'CPU Intel Gen 12 phân khúc giá rẻ hiệu năng cao', attributes: { socket: 'LGA1700', power: 65, cores: 4 } },
     { name: 'Intel Core i5-12400F', image: 'https://via.placeholder.com/400x300?text=Core+i5+12400F', category: getCatId('CPU'), brand: 'Intel', price: 3490000, stockQuantity: 12, specs: '6 Cores, 12 Threads, Socket LGA1700', description: 'CPU quốc dân cho game thủ tầm trung', attributes: { socket: 'LGA1700', power: 65, cores: 6 } },
     { name: 'Intel Core i5-13400F', image: 'https://via.placeholder.com/400x300?text=Core+i5+13400F', category: getCatId('CPU'), brand: 'Intel', price: 5290000, stockQuantity: 8, specs: '10 Cores, 16 Threads, Socket LGA1700', description: 'CPU Gen 13 mạnh mẽ nhiều nhân xử lý tốt đa tác vụ', attributes: { socket: 'LGA1700', power: 65, cores: 10 } },
@@ -107,11 +113,11 @@ async function seed() {
     }))),
 
     // VGAs
-    { name: 'MSI GeForce GTX 1650 D6 AERO ITX 4G', image: 'https://via.placeholder.com/400x300?text=GTX+1650+MSI', category: getCatId('VGA'), brand: 'MSI', price: 3650000, stockQuantity: 6, specs: '4GB GDDR6, 1 quạt gọn nhẹ', description: 'Card đồ họa bình dân cho máy văn phòng và game nhẹ', attributes: { power: 75 } },
-    { name: 'ASUS Dual GeForce RTX 3050 V2 8GB', image: 'https://via.placeholder.com/400x300?text=RTX+3050+ASUS', category: getCatId('VGA'), brand: 'ASUS', price: 5890000, stockQuantity: 8, specs: '8GB GDDR6, Hỗ trợ DLSS & Ray Tracing', description: 'Card đồ họa tầm trung giá mềm có công nghệ Ray Tracing', attributes: { power: 130 } },
-    { name: 'GIGABYTE GeForce RTX 4060 WINDFORCE OC 8G', image: 'https://via.placeholder.com/400x300?text=RTX+4060+Gigabyte', category: getCatId('VGA'), brand: 'Gigabyte', price: 8190000, stockQuantity: 10, specs: '8GB GDDR6, Thế hệ RTX 40, Tiết kiệm điện', description: 'Card đồ họa quốc dân thế hệ 40 siêu mát', attributes: { power: 115 } },
-    { name: 'MSI GeForce RTX 4060 Ti VENTUS 2X 8G OC', image: 'https://via.placeholder.com/400x300?text=RTX+4060+Ti+MSI', category: getCatId('VGA'), brand: 'MSI', price: 11450000, stockQuantity: 5, specs: '8GB GDDR6, Đồ họa mượt mà', description: 'Sự lựa chọn hoàn hảo cho chơi game Full HD và 2K', attributes: { power: 160 } },
-    { name: 'ASUS TUF Gaming GeForce RTX 4070 SUPER 12GB', image: 'https://via.placeholder.com/400x300?text=RTX+4070+Super+ASUS', category: getCatId('VGA'), brand: 'ASUS', price: 19490000, stockQuantity: 3, specs: '12GB GDDR6X, Siêu bền TUF', description: 'Quái vật chiến game 2K/4K và làm đồ họa chuyên nghiệp', attributes: { power: 220 } },
+    { name: 'MSI GeForce GTX 1650 D6 AERO ITX 4G', image: 'https://via.placeholder.com/400x300?text=GTX+1650+MSI', category: getCatId('VGA'), brand: 'MSI', price: 3650000, stockQuantity: 6, specs: '4GB GDDR6, 1 quạt gọn nhẹ', description: 'Card đồ họa bình dân cho máy văn phòng và game nhẹ', attributes: { power: 75, capacity: 4 } },
+    { name: 'ASUS Dual GeForce RTX 3050 V2 8GB', image: 'https://via.placeholder.com/400x300?text=RTX+3050+ASUS', category: getCatId('VGA'), brand: 'ASUS', price: 5890000, stockQuantity: 8, specs: '8GB GDDR6, Hỗ trợ DLSS & Ray Tracing', description: 'Card đồ họa tầm trung giá mềm có công nghệ Ray Tracing', attributes: { power: 130, capacity: 8 } },
+    { name: 'GIGABYTE GeForce RTX 4060 WINDFORCE OC 8G', image: 'https://via.placeholder.com/400x300?text=RTX+4060+Gigabyte', category: getCatId('VGA'), brand: 'Gigabyte', price: 8190000, stockQuantity: 10, specs: '8GB GDDR6, Thế hệ RTX 40, Tiết kiệm điện', description: 'Card đồ họa quốc dân thế hệ 40 siêu mát', attributes: { power: 115, capacity: 8 } },
+    { name: 'MSI GeForce RTX 4060 Ti VENTUS 2X 8G OC', image: 'https://via.placeholder.com/400x300?text=RTX+4060+Ti+MSI', category: getCatId('VGA'), brand: 'MSI', price: 11450000, stockQuantity: 5, specs: '8GB GDDR6, Đồ họa mượt mà', description: 'Sự lựa chọn hoàn hảo cho chơi game Full HD và 2K', attributes: { power: 160, capacity: 8 } },
+    { name: 'ASUS TUF Gaming GeForce RTX 4070 SUPER 12GB', image: 'https://via.placeholder.com/400x300?text=RTX+4070+Super+ASUS', category: getCatId('VGA'), brand: 'ASUS', price: 19490000, stockQuantity: 3, specs: '12GB GDDR6X, Siêu bền TUF', description: 'Quái vật chiến game 2K/4K và làm đồ họa chuyên nghiệp', attributes: { power: 220, capacity: 12 } },
 
     // PSUs
     { name: 'Antec Atom V550 550W', image: 'https://placehold.co/400x300?text=Antec+V550', category: getCatId('PSU'), brand: 'Antec', price: 690000, stockQuantity: 14, specs: '550W công suất thực', description: 'Nguồn giá rẻ cho cấu hình văn phòng', attributes: { wattage: 550 } },

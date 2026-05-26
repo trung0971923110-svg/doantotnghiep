@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Cpu, Wrench, Video, ShieldAlert, CheckCircle, Clock } from 'lucide-react';
-
 // Helper to format prices
 const fmt = (v) => v ? v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '₫' : 'Liên hệ';
 const placeholderFor = (name) => `https://placehold.co/400x300?text=${encodeURIComponent(name || 'San Pham')}`;
 
-export default function Home({ setPage, selectedCategory, setSelectedCategory, setSelectedProductId, setSelectedSuggestion, selectedBrand, setSelectedBrand, selectedCapacity, setSelectedCapacity, productUpdateSignal, lastUpdatedProduct }) {
+export default function Home({ setPage, selectedCategory, setSelectedCategory, setSelectedProductId, setSelectedSuggestion, selectedBrand, setSelectedBrand, selectedSeries, setSelectedSeries, productUpdateSignal, lastUpdatedProduct, selectedPrice }) {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [selectedCapacity, setSelectedCapacity] = useState('all');
   const featuredRef = useRef(null);
 
   useEffect(() => {
@@ -18,8 +18,11 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
         const parts = [];
         if (selectedCategory) parts.push(`category=${encodeURIComponent(selectedCategory)}`);
         // server-side filters for specific categories
-        if ((selectedCategory === 'cpu' || selectedCategory === 'ram') && selectedBrand && selectedBrand !== 'all') parts.push(`brand=${encodeURIComponent(selectedBrand)}`);
-        if (selectedCategory === 'ram' && selectedCapacity && selectedCapacity !== 'all') parts.push(`capacity=${encodeURIComponent(selectedCapacity)}`);
+      if (['cpu', 'ram', 'vga', 'ssd'].includes(selectedCategory) && selectedBrand && selectedBrand !== 'all') parts.push(`brand=${encodeURIComponent(selectedBrand)}`);
+        if (selectedCategory === 'cpu' && selectedSeries && selectedSeries !== 'all') parts.push(`series=${encodeURIComponent(selectedSeries)}`);
+
+        // Thêm lọc theo dung lượng nếu là RAM
+        if (['ram', 'vga', 'ssd'].includes(selectedCategory) && selectedCapacity && selectedCapacity !== 'all') parts.push(`attributes.capacity=${encodeURIComponent(selectedCapacity)}`);
 
         const q = parts.length ? `?${parts.join('&')}` : '';
         const res = await fetch('/api/pc-builder/products' + q);
@@ -38,7 +41,7 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
     }
     load();
     return () => { cancelled = true; };
-  }, [selectedCategory, selectedBrand, selectedCapacity, productUpdateSignal]);
+  }, [selectedCategory, selectedBrand, selectedSeries, selectedCapacity, productUpdateSignal]);
 
   // when a category is selected and products loaded, scroll to featured strip
   useEffect(() => {
@@ -49,12 +52,13 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
     }
     // reset filters when switching away from categories with specific filters
     try {
-      if (selectedCategory !== 'cpu' && selectedCategory !== 'ram') {
+      if (!['cpu', 'ram', 'vga', 'ssd'].includes(selectedCategory)) {
         setSelectedBrand('all');
+        setSelectedSeries('all');
         setSelectedCapacity('all');
       }
     } catch(e) { /* ignore if prop not provided */ }
-  }, [selectedCategory, loadingProducts]);
+  }, [selectedCategory, loadingProducts, setSelectedBrand, setSelectedSeries, setSelectedCapacity]);
 
   // Horizontal scroll for all product strips when using mouse wheel
   useEffect(() => {
@@ -94,8 +98,12 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
     return () => { cancelled = true; };
   }, []);
 
-  // rely on server-side filtering; products already filtered when selectedCategory and brand are set
-  const filtered = products;
+  // Filter products by selected price range (approximate +/- 30%)
+  const filtered = products.filter(p => {
+    if (!selectedPrice) return true;
+    const margin = selectedPrice * 0.3; // Biên độ xấp xỉ 30%
+    return p.price >= (selectedPrice - margin) && p.price <= (selectedPrice + margin);
+  });
 
   const grouped = filtered.reduce((acc, p) => {
     const k = String(p.category || 'other').toUpperCase();
@@ -103,11 +111,15 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
     return acc;
   }, {});
   const getImageSrc = (p) => {
-    if (p && p.image && p.image !== '') return p.image;
-    return placeholderFor(p?.name);
+    if (!p || !p.image || p.image === '') return placeholderFor(p?.name);
+    // Nếu là link ảnh từ bên ngoài (http), chạy qua proxy của backend để đảm bảo hiển thị
+    if (p.image.startsWith('http')) {
+      return `/api/pc-builder/image?url=${encodeURIComponent(p.image)}`;
+    }
+    return p.image;
   };
   return (
-    <div className="home-page">
+    <div className="home-page" style={{ width: '100%', maxWidth: 'none', padding: '0 10px' }}>
       {/* Hero Section */}
       <section className="hero-section" style={{ textAlign: 'center', padding: '3rem 1rem 4rem' }}>
         <h1 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '1.5rem', lineHeight: 1.2 }}>
@@ -116,7 +128,7 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
             Dịch Vụ Máy Tính - Camera
           </span>
         </h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', maxWidth: '800px', margin: '0 auto 2.5rem', lineHeight: 1.6 }}>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '1.2rem', maxWidth: 'none', margin: '0 auto 2.5rem', lineHeight: 1.6 }}>
           Giải pháp toàn diện tối ưu hóa quy trình dịch vụ tin học, tự động tính toán thiết kế camera giám sát trực tuyến, lắp ráp cấu hình PC tự động và theo dõi quy trình sửa chữa thời gian thực.
         </p>
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
@@ -132,8 +144,8 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
       {/* Suggested builds (hidden when a category filter is active) */}
       {(!selectedCategory && suggestions && suggestions.length > 0) && (
         <section style={{ marginTop: '2rem', marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem' }}>Cấu hình PC gợi ý (Gaming ~15.000.000₫)</h2>
-          <div className="grid-3" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem' }}>Cấu hình PC gợi ý</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', width: '100%' }}>
             {suggestions.map((s, i) => {
               // choose a hero component (prefer vga, then cpu, else first)
               const comps = s.components || {};
@@ -146,7 +158,7 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
               const oldPrice = Math.round(price * 1.12);
               const discount = Math.round((oldPrice - price) / oldPrice * 100);
               return (
-                <div key={i} style={{ width: '220px' }}>
+                <div key={i} style={{ width: '100%' }}>
                   <div className="product-card glass-card" style={{ padding: '0.5rem', position: 'relative' }}>
                     <div style={{ position: 'relative' }}>
                       <img src={heroImg} alt={title} style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '8px' }} />
@@ -184,6 +196,45 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
         </div>
       )}
 
+      {/* Series pills for CPU category when Intel brand is selected */}
+      {selectedCategory === 'cpu' && selectedBrand === 'intel' && (
+        <div style={{ margin: '0.5rem 0 1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginRight: '0.5rem' }}>Dòng Chip:</span>
+          {['all', 'i3', 'i5', 'i7', 'i9'].map(s => (
+            <button
+              key={s}
+              className={`btn ${selectedSeries === s ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setSelectedSeries(s)}
+            >
+              {s === 'all' ? 'Tất cả' : s.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* VRAM pills for VGA category */}
+      {selectedCategory === 'vga' && (
+        <div style={{ margin: '0.5rem 0 1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginRight: '0.5rem' }}>Bộ nhớ VRAM:</span>
+          {['all', '4', '8', '12', '16'].map(cap => (
+            <button key={cap} className={`btn ${selectedCapacity === cap ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSelectedCapacity(cap)}>
+              {cap === 'all' ? 'Tất cả' : `${cap}GB`}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Capacity pills for SSD category */}
+      {selectedCategory === 'ssd' && (
+        <div style={{ margin: '0.5rem 0 1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginRight: '0.5rem' }}>Dung lượng SSD:</span>
+          {['all', '120', '240', '256', '500', '512', '1000', '2000'].map(cap => (
+            <button key={cap} className={`btn ${selectedCapacity === cap ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSelectedCapacity(cap)}>
+              {cap === 'all' ? 'Tất cả' : `${cap >= 1000 ? cap / 1000 + 'TB' : cap + 'GB'}`}
+            </button>
+          ))}
+        </div>
+      )}
       {/* Capacity pills for RAM category */}
       {selectedCategory === 'ram' && (
         <div style={{ margin: '0.5rem 0 1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -196,9 +247,23 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
         </div>
       )}
 
+      {/* Hiển thị thông báo khi không có sản phẩm nào khớp với bộ lọc hoặc danh mục */}
+      {!loadingProducts && filtered.length === 0 && (
+        <div className="glass-card" style={{ textAlign: 'center', padding: '4rem 1rem', margin: '2rem 0', border: '1px dashed var(--glass-border)' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.3 }}>📦</div>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Không tìm thấy sản phẩm</h3>
+          <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Rất tiếc, hiện tại không có linh kiện nào phù hợp với bộ lọc hoặc danh mục này.</p>
+          {selectedCategory && (
+            <button className="btn btn-secondary" style={{ marginTop: '1.5rem' }} onClick={() => setSelectedCategory(null)}>
+              Xem tất cả sản phẩm
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Featured products horizontal strip (hidden when a category filter is active) */}
-      {!selectedCategory && (
-        <section style={{ marginTop: '2rem', marginBottom: '2.5rem' }}>
+      {!selectedCategory && filtered.length > 0 && (
+        <section style={{ marginTop: '2rem', marginBottom: '2.5rem', width: '100%' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Sản Phẩm Nổi Bật</h2>
           {selectedCategory && (
@@ -206,7 +271,7 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
           )}
         </div>
 
-        <div className="featured-strip" ref={featuredRef} id="featured-strip" style={{ overflowX: 'auto', display: 'flex', scrollBehavior: 'smooth' }}>
+        <div className="featured-strip" ref={featuredRef} id="featured-strip" style={{ overflowX: 'auto', display: 'flex', scrollBehavior: 'smooth', width: '100%' }}>
           {filtered.slice(0, 12).map((p) => (
             <div key={p._id || p.name} className="product-card" style={{ cursor: 'pointer' }} onClick={() => { setSelectedProductId && setSelectedProductId(p._id); setPage('product'); }}>
               <div className="product-image" aria-hidden>
@@ -260,7 +325,7 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
       <section className="features-grid" style={{ marginBottom: '4rem' }}>
         <h2 style={{ textAlign: 'center', fontSize: '1.8rem', marginBottom: '2.5rem' }}>Các Phân Hệ Tính Năng Chính</h2>
         
-        <div className="grid-3">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
           {/* Card 1: PC Builder */}
           <div className="glass-card" onClick={() => setPage('pc-builder')} style={{ cursor: 'pointer' }}>
             <div style={{ background: 'rgba(99, 102, 241, 0.1)', color: 'var(--primary)', padding: '0.8rem', borderRadius: '12px', width: 'fit-content', marginBottom: '1.5rem' }}>

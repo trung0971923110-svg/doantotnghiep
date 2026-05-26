@@ -146,7 +146,7 @@ export default function RepairService() {
 
       {/* MODE 1: BOOKING FORM */}
       {activeMode === 'book' && (
-        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+        <div style={{ width: '100%', padding: '0 1rem' }}>
           {bookedTicket ? (
             <div className="glass-card" style={{ textAlign: 'center', borderTop: '4px solid var(--color-success)' }}>
               <div style={{ background: 'var(--color-success-bg)', color: 'var(--color-success)', padding: '1rem', borderRadius: '50%', width: 'fit-content', margin: '0 auto 1.5rem' }}>
@@ -262,7 +262,7 @@ export default function RepairService() {
       {activeMode === 'track' && (
         <div>
           {/* Search bar */}
-          <div className="glass-card" style={{ maxWidth: '800px', margin: '0 auto 2rem' }}>
+          <div className="glass-card" style={{ width: '100%', marginBottom: '2rem' }}>
             <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem', textAlign: 'center' }}>Nhập thông tin tra cứu phiếu sửa chữa</h2>
             <form onSubmit={handleSearch} style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
               <div style={{ flex: '1 1 250px' }}>
@@ -457,7 +457,7 @@ export default function RepairService() {
           )}
 
           {!searchResults.length && !searchLoading && (
-            <div className="glass-card" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '5rem 1rem', maxWidth: '800px', margin: '0 auto' }}>
+            <div className="glass-card" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '5rem 1rem', width: '100%' }}>
               <Phone size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
               <p>Vui lòng nhập số điện thoại hoặc mã phiếu của bạn để kiểm tra tiến trình sửa chữa theo thời gian thực.</p>
             </div>

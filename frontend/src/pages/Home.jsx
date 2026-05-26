@@ -4,10 +4,9 @@ import { Cpu, Wrench, Video, ShieldAlert, CheckCircle, Clock } from 'lucide-reac
 const fmt = (v) => v ? v.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '₫' : 'Liên hệ';
 const placeholderFor = (name) => `https://placehold.co/400x300?text=${encodeURIComponent(name || 'San Pham')}`;
 
-export default function Home({ setPage, selectedCategory, setSelectedCategory, setSelectedProductId, setSelectedSuggestion, selectedBrand, setSelectedBrand, selectedSeries, setSelectedSeries, productUpdateSignal, lastUpdatedProduct, selectedPrice }) {
+export default function Home({ setPage, selectedCategory, setSelectedCategory, setSelectedProductId, setSelectedSuggestion, selectedBrand, setSelectedBrand, selectedSeries, setSelectedSeries, selectedCapacity, setSelectedCapacity, selectedWattage, setSelectedWattage, selectedSocket, setSelectedSocket, productUpdateSignal, lastUpdatedProduct, selectedPrice }) {
   const [products, setProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
-  const [selectedCapacity, setSelectedCapacity] = useState('all');
   const featuredRef = useRef(null);
 
   useEffect(() => {
@@ -18,11 +17,17 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
         const parts = [];
         if (selectedCategory) parts.push(`category=${encodeURIComponent(selectedCategory)}`);
         // server-side filters for specific categories
-      if (['cpu', 'ram', 'vga', 'ssd'].includes(selectedCategory) && selectedBrand && selectedBrand !== 'all') parts.push(`brand=${encodeURIComponent(selectedBrand)}`);
+      if (['cpu', 'ram', 'vga', 'ssd', 'psu', 'mainboard', 'case'].includes(selectedCategory) && selectedBrand && selectedBrand !== 'all') parts.push(`brand=${encodeURIComponent(selectedBrand)}`);
         if (selectedCategory === 'cpu' && selectedSeries && selectedSeries !== 'all') parts.push(`series=${encodeURIComponent(selectedSeries)}`);
 
         // Thêm lọc theo dung lượng nếu là RAM
         if (['ram', 'vga', 'ssd'].includes(selectedCategory) && selectedCapacity && selectedCapacity !== 'all') parts.push(`attributes.capacity=${encodeURIComponent(selectedCapacity)}`);
+
+        // Thêm lọc theo công suất nếu là Nguồn (PSU)
+        if (selectedCategory === 'psu' && selectedWattage && selectedWattage !== 'all') parts.push(`attributes.wattage=${encodeURIComponent(selectedWattage)}`);
+
+        // Thêm lọc theo socket nếu là Mainboard
+        if (selectedCategory === 'mainboard' && selectedSocket && selectedSocket !== 'all') parts.push(`attributes.socket=${encodeURIComponent(selectedSocket)}`);
 
         const q = parts.length ? `?${parts.join('&')}` : '';
         const res = await fetch('/api/pc-builder/products' + q);
@@ -41,7 +46,7 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
     }
     load();
     return () => { cancelled = true; };
-  }, [selectedCategory, selectedBrand, selectedSeries, selectedCapacity, productUpdateSignal]);
+  }, [selectedCategory, selectedBrand, selectedSeries, selectedCapacity, selectedWattage, selectedSocket, productUpdateSignal]);
 
   // when a category is selected and products loaded, scroll to featured strip
   useEffect(() => {
@@ -50,15 +55,7 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
         try { featuredRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { /* ignore */ }
       }, 200);
     }
-    // reset filters when switching away from categories with specific filters
-    try {
-      if (!['cpu', 'ram', 'vga', 'ssd'].includes(selectedCategory)) {
-        setSelectedBrand('all');
-        setSelectedSeries('all');
-        setSelectedCapacity('all');
-      }
-    } catch(e) { /* ignore if prop not provided */ }
-  }, [selectedCategory, loadingProducts, setSelectedBrand, setSelectedSeries, setSelectedCapacity]);
+  }, [selectedCategory, loadingProducts]);
 
   // Horizontal scroll for all product strips when using mouse wheel
   useEffect(() => {
@@ -228,7 +225,7 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
       {selectedCategory === 'ssd' && (
         <div style={{ margin: '0.5rem 0 1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginRight: '0.5rem' }}>Dung lượng SSD:</span>
-          {['all', '120', '240', '256', '500', '512', '1000', '2000'].map(cap => (
+          {['all', '128', '256', '512', '1000', '2000'].map(cap => (
             <button key={cap} className={`btn ${selectedCapacity === cap ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSelectedCapacity(cap)}>
               {cap === 'all' ? 'Tất cả' : `${cap >= 1000 ? cap / 1000 + 'TB' : cap + 'GB'}`}
             </button>
@@ -242,6 +239,30 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
           {['all', '8', '16', '32'].map(cap => (
             <button key={cap} className={`btn ${selectedCapacity === cap ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSelectedCapacity(cap)}>
               {cap === 'all' ? 'Tất cả' : `${cap}GB`}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Wattage pills for PSU category */}
+      {selectedCategory === 'psu' && (
+        <div style={{ margin: '0.5rem 0 1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginRight: '0.5rem' }}>Công suất:</span>
+          {['all', '650', '750', '850'].map(w => (
+            <button key={w} className={`btn ${selectedWattage === w ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSelectedWattage(w)}>
+              {w === 'all' ? 'Tất cả' : `${w}W`}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Socket pills for Mainboard category */}
+      {selectedCategory === 'mainboard' && (
+        <div style={{ margin: '0.5rem 0 1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)', marginRight: '0.5rem' }}>Socket:</span>
+          {['all', '1200', '1700', '1851'].map(s => (
+            <button key={s} className={`btn ${selectedSocket === s ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setSelectedSocket(s)}>
+              {s === 'all' ? 'Tất cả' : s}
             </button>
           ))}
         </div>
@@ -285,6 +306,11 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
               </div>
               <div className="product-info">
                 <div className="product-name">{p.name}</div>
+                {p.category?.toString().toLowerCase() === 'ssd' && p.attributes?.readSpeed && (
+                  <div style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 600, marginTop: '2px' }}>
+                    🚀 R: {p.attributes.readSpeed}MB/s | W: {p.attributes.writeSpeed}MB/s
+                  </div>
+                )}
                 <div className="product-price">{fmt(p.price)}</div>
               </div>
             </div>
@@ -314,6 +340,11 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
                   />
                 </div>
                 <div className="cat-name">{p.name}</div>
+                {p.category?.toString().toLowerCase() === 'ssd' && p.attributes?.readSpeed && (
+                  <div style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 600, marginTop: '2px', marginBottom: '4px' }}>
+                    🚀 R: {p.attributes.readSpeed}MB/s | W: {p.attributes.writeSpeed}MB/s
+                  </div>
+                )}
                 <div className="cat-price">{fmt(p.price)}</div>
               </div>
             ))}

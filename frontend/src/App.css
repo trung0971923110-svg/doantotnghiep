@@ -519,7 +519,7 @@ body {
   font-size: 2.5rem;
   font-weight: 800;
   margin-bottom: 0.5rem;
-  background: linear-gradient(135deg, #ffffff 30%, var(--text-secondary) 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -692,4 +692,41 @@ body {
   .page-title {
     font-size: 2rem;
   }
+}
+
+/* Nút Zalo nổi */
+.zalo-float {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background-color: #0068FF;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-weight: 700;
+  box-shadow: 0 4px 15px rgba(0, 104, 255, 0.4);
+  z-index: 1000;
+  transition: var(--transition-bounce);
+  animation: zalo-pulse 2s infinite;
+}
+
+.zalo-float:hover {
+  transform: scale(1.1);
+  background-color: #0056d2;
+  color: white !important;
+}
+
+@keyframes zalo-pulse {
+  0% { transform: scale(1); box-shadow: 0 4px 15px rgba(0, 104, 255, 0.4); }
+  50% { transform: scale(1.05); box-shadow: 0 4px 25px rgba(0, 104, 255, 0.6); }
+  100% { transform: scale(1); box-shadow: 0 4px 15px rgba(0, 104, 255, 0.4); }
+}
+
+@media (max-width: 768px) {
+  .zalo-float span { display: none; }
+  .zalo-float { padding: 12px; border-radius: 50%; bottom: 20px; right: 20px; }
 }

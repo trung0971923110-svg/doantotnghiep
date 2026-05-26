@@ -79,8 +79,16 @@ router.get('/products', async (req, res) => {
       }
     }
     // optional capacity filter (numeric)
-    if (req.query.capacity && req.query.capacity !== 'all') {
-      filter['attributes.capacity'] = Number(req.query.capacity);
+    if (req.query['attributes.capacity'] && req.query['attributes.capacity'] !== 'all') {
+      filter['attributes.capacity'] = Number(req.query['attributes.capacity']);
+    }
+    // optional wattage filter (numeric)
+    if (req.query['attributes.wattage'] && req.query['attributes.wattage'] !== 'all') {
+      filter['attributes.wattage'] = Number(req.query['attributes.wattage']);
+    }
+    // optional socket filter
+    if (req.query['attributes.socket'] && req.query['attributes.socket'] !== 'all') {
+      filter['attributes.socket'] = { $regex: new RegExp(req.query['attributes.socket'], 'i') };
     }
     // optional series filter (e.g. i3, i5, i7, r5, r7) - Lọc theo tên sản phẩm
     if (req.query.series && req.query.series !== 'all' && category === 'cpu') {

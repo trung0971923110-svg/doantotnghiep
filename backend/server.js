@@ -25,9 +25,9 @@ app.use(express.json());
 
 // Serve cached proxied images from backend/public/proxied_images
 // Serve entire public folder under /images (placeholder and other statics)
-app.use('/images', express.static(path.join(process.cwd(), 'public')));
+app.use('/images', express.static(path.join(process.cwd(), 'backend', 'public')));
 // Also keep a dedicated route for proxied images for compatibility
-app.use('/images/proxy', express.static(path.join(process.cwd(), 'public', 'proxied_images')));
+app.use('/images/proxy', express.static(path.join(process.cwd(), 'backend', 'public', 'proxied_images')));
 
 // Request logger middleware
 app.use((req, res, next) => {

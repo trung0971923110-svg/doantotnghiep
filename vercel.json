@@ -15,14 +15,17 @@
   ],
   "rewrites": [
     {
-      "source": "/api",
-      "destination": "/backend/server.js"
-    },
-    {
       "source": "/api/(.*)",
       "destination": "/backend/server.js"
     },
-    { "source": "/(.*)", "destination": "/frontend/$1" }
+    {
+      "source": "/images/(.*)",
+      "destination": "/backend/public/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/frontend/$1"
+    }
   ],
   "cleanUrls": true
 }

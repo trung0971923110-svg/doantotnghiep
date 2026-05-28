@@ -16,7 +16,7 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - MONGODB_URI=mongodb://mongo:27017/sanpham
+      - MONGODB_URI=mongodb+srv://trung0971923110_db_user:Trung2004@builsanphamtheoyeucau.j4ckpyc.mongodb.net/sanpham?retryWrites=true&w=majority
     depends_on:
       - mongo
 
@@ -37,7 +37,7 @@ services:
       context: ./backend
     command: ["node", "seedPC.js"]
     environment:
-      - MONGODB_URI=mongodb://mongo:27017/sanpham
+      - MONGODB_URI=mongodb+srv://trung0971923110_db_user:Trung2004@builsanphamtheoyeucau.j4ckpyc.mongodb.net/sanpham?retryWrites=true&w=majority
     depends_on:
       - mongo
     restart: "no"

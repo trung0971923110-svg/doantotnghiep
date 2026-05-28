@@ -59,6 +59,12 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/sanpha
 async function startServerWithUri(uri) {
   await mongoose.connect(uri);
   console.log(`✅ Connected to MongoDB at: ${uri}`);
+
+  // Nếu đang chạy trên Vercel, thoát sớm để không chạy listen() và socket logic
+  if (process.env.VERCEL) {
+    return;
+  }
+
   // Try to establish a MongoDB change stream to broadcast external DB updates
   try {
     const changeStream = Product.watch([], { fullDocument: 'updateLookup' });

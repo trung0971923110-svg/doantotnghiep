@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "doantotnghiep-root": "file:..",
     "dotenv": "^17.4.2",
     "express": "^4.19.2",
     "mongoose": "^8.9.5",

@@ -118,3 +118,5 @@ startServerWithUri(MONGODB_URI).catch(async (err) => {
     process.exit(1);
   }
 });
+
+export default app;

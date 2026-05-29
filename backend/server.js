@@ -59,20 +59,26 @@ app.use((err, req, res, next) => {
 // Connect to MongoDB (Atlas, local, or in-memory fallback for dev) and Start Server
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://trung0971923110_db_user:Trung2004@builsanphamtheoyeucau.j4ckpyc.mongodb.net/sanpham';
 
-let isConnected = false;
+let cachedDb = null;
+
 async function startServerWithUri(uri) {
-  if (isConnected) return;
-  await mongoose.connect(uri);
-  isConnected = true;
+  if (cachedDb) return cachedDb;
+  
+  const opts = {
+    bufferCommands: false,
+  };
+
+  const conn = await mongoose.connect(uri, opts);
+  cachedDb = conn;
   console.log(`✅ Connected to MongoDB at: ${uri}`);
 
-  // Nếu đang chạy trên Vercel, thoát sớm để không chạy listen() và socket logic
   if (process.env.VERCEL) {
     return;
   }
 
   // Try to establish a MongoDB change stream to broadcast external DB updates
   try {
+    // Change streams chỉ chạy ở môi trường server truyền thống
     const changeStream = Product.watch([], { fullDocument: 'updateLookup' });
     changeStream.on('change', (change) => {
       try {
@@ -98,7 +104,19 @@ async function startServerWithUri(uri) {
   });
 }
 
-console.log('⏳ Connecting to MongoDB...');
+// Middleware để đảm bảo DB luôn kết nối trước khi chạy route (Quan trọng cho Vercel)
+app.use(async (req, res, next) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      await startServerWithUri(MONGODB_URI);
+    }
+    next();
+  } catch (err) {
+    console.error('Database connection error:', err);
+    res.status(500).json({ message: 'Không thể kết nối cơ sở dữ liệu' });
+  }
+});
+
 startServerWithUri(MONGODB_URI).catch(async (err) => {
   console.warn('⚠️ Initial MongoDB connection failed:', err.message);
   if (process.env.NODE_ENV === 'production') {

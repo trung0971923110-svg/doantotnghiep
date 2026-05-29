@@ -59,8 +59,11 @@ app.use((err, req, res, next) => {
 // Connect to MongoDB (Atlas, local, or in-memory fallback for dev) and Start Server
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://trung0971923110_db_user:Trung2004@builsanphamtheoyeucau.j4ckpyc.mongodb.net/sanpham';
 
+let isConnected = false;
 async function startServerWithUri(uri) {
+  if (isConnected) return;
   await mongoose.connect(uri);
+  isConnected = true;
   console.log(`✅ Connected to MongoDB at: ${uri}`);
 
   // Nếu đang chạy trên Vercel, thoát sớm để không chạy listen() và socket logic

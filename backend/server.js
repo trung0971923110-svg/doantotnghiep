@@ -62,7 +62,7 @@ async function connectToDatabase() {
   }
 }
 
-// Middleware để đảm bảo DB luôn kết nối trước khi chạy route (Phải đặt TRƯỚC các app.use routes)
+// Đảm bảo middleware này nằm TRƯỚC các dòng app.use('/api/...')
 app.use(async (req, res, next) => {
   try {
     if (mongoose.connection.readyState !== 1) {

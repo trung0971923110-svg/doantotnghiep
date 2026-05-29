@@ -50,4 +50,5 @@ RepairSchema.pre('save', async function (next) {
   next();
 });
 
-export default mongoose.model('Repair', RepairSchema);
+const Repair = mongoose.models.Repair || mongoose.model('Repair', RepairSchema);
+export default Repair;

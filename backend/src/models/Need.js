@@ -4,4 +4,5 @@ const NeedSchema = new mongoose.Schema({
   name: { type: String, required: true, unique: true, trim: true }
 }, { timestamps: true });
 
-export default mongoose.model('Need', NeedSchema);
+const Need = mongoose.models.Need || mongoose.model('Need', NeedSchema);
+export default Need;

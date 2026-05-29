@@ -25,4 +25,5 @@ const RecommendationRuleSchema = new mongoose.Schema({
   }
 }, { timestamps: true });
 
-export default mongoose.model('RecommendationRule', RecommendationRuleSchema);
+const RecommendationRule = mongoose.models.RecommendationRule || mongoose.model('RecommendationRule', RecommendationRuleSchema);
+export default RecommendationRule;

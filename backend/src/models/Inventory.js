@@ -13,4 +13,5 @@ const InventorySchema = new mongoose.Schema({
   specs: { type: mongoose.Schema.Types.Mixed, default: {} }
 }, { timestamps: true });
 
-export default mongoose.model('Inventory', InventorySchema);
+const Inventory = mongoose.models.Inventory || mongoose.model('Inventory', InventorySchema);
+export default Inventory;

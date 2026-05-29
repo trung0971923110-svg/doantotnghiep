@@ -10,4 +10,5 @@ const SavedBuildSchema = new mongoose.Schema({
   }]
 }, { timestamps: true });
 
-export default mongoose.model('SavedBuild', SavedBuildSchema);
+const SavedBuild = mongoose.models.SavedBuild || mongoose.model('SavedBuild', SavedBuildSchema);
+export default SavedBuild;

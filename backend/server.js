@@ -54,7 +54,7 @@ app.use((err, req, res, next) => {
 });
 
 // Connect to MongoDB (Atlas, local, or in-memory fallback for dev) and Start Server
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/sanpham';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://trung0971923110_db_user:Trung2004@builsanphamtheoyeucau.j4ckpyc.mongodb.net/sanpham';
 
 async function startServerWithUri(uri) {
   await mongoose.connect(uri);

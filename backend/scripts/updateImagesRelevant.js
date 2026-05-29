@@ -1,8 +1,11 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
 import Product from '../src/models/Product.js';
+import dns from 'dns';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/sanpham';
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://trung0971923110_db_user:Trung2004@builsanphamtheoyeucau.j4ckpyc.mongodb.net/sanpham';
 
 function mapCategoryToKeyword(cat) {
   if (!cat) return '';

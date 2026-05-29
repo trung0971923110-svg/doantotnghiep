@@ -3,7 +3,10 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import mongoose from 'mongoose';
+import dns from 'dns';
 import http from 'http';
+
+dns.setServers(['8.8.8.8', '8.8.4.4']);
 import { Server as IOServer } from 'socket.io';
 import authRoutes from './src/routes/authRoutes.js';
 import inventoryRoutes from './src/routes/inventoryRoutes.js';

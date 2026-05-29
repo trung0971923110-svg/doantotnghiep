@@ -3,8 +3,11 @@ import mongoose from 'mongoose';
 import User from './src/models/User.js';
 import Inventory from './src/models/Inventory.js';
 import Repair from './src/models/Repair.js';
+import dns from 'dns';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/sanpham';
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://trung0971923110_db_user:Trung2004@builsanphamtheoyeucau.j4ckpyc.mongodb.net/sanpham';
 
 const users = [
   { username: 'admin',    password: 'admin123',    role: 'admin',      name: 'Nguyễn Văn Quản Lý' },

@@ -5,8 +5,11 @@ import Product from './src/models/Product.js';
 import Need from './src/models/Need.js';
 import RecommendationRule from './src/models/RecommendationRule.js';
 import User from './src/models/User.js';
+import dns from 'dns';
 
-const MONGODB_URI = process.env.MONGODB_URI || process.argv[2] || 'mongodb://127.0.0.1:27017/sanpham';
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+
+const MONGODB_URI = process.env.MONGODB_URI || process.argv[2] || 'mongodb+srv://trung0971923110_db_user:Trung2004@builsanphamtheoyeucau.j4ckpyc.mongodb.net/sanpham';
 if (!process.env.MONGODB_URI) {
   console.warn('⚠️ MONGODB_URI not set; falling back to', MONGODB_URI);
 }

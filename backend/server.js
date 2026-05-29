@@ -11,7 +11,6 @@ import cameraRoutes from './src/routes/cameraRoutes.js';
 import inventoryRoutes from './src/routes/inventoryRoutes.js';
 import repairRoutes from './src/routes/repairRoutes.js';
 import pcBuilderRoutes from './src/routes/pcBuilderRoutes.js';
-import cameraRoutes from './src/routes/cameraRoutes.js';
 import Product from './src/models/Product.js';
 
 const app = express();

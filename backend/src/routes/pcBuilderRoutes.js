@@ -11,8 +11,8 @@ import multer from 'multer';
 const router = express.Router();
 
 // Setup upload directory and multer storage for admin image uploads
-const uploadDir = path.join(process.cwd(), 'public', 'proxied_images');
-try { fs.mkdirSync(uploadDir, { recursive: true }); } catch (e) { /* ignore */ }
+const uploadDir = path.join(process.cwd(), 'backend', 'public', 'proxied_images');
+if (!process.env.VERCEL) { try { fs.mkdirSync(uploadDir, { recursive: true }); } catch (e) { /* ignore */ } }
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) => {

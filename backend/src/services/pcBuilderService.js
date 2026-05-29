@@ -96,14 +96,19 @@ export const pcBuilderService = {
 
     const results = [];
     for (const c of cpuList) {
+      if (c.price >= budget) continue;
       const compatibleMbs = mbList.filter(m => m.attributes?.socket === c.attributes?.socket);
       for (const m of compatibleMbs) {
+        if (c.price + m.price >= budget) continue;
         const compatibleRams = ramList.filter(r => r.attributes?.ramType === m.attributes?.ramType);
         for (const r of compatibleRams) {
+          if (c.price + m.price + r.price >= budget) continue;
           for (const v of vgaList) {
+            const currentTotal = c.price + m.price + r.price + (v ? v.price : 0);
+            if (currentTotal >= budget) continue;
             const powerRequired = 100 + (c.attributes?.power || 65) + (v ? (v.attributes?.power || 75) : 0);
             const compatiblePsus = psuList.filter(p => (p.attributes?.wattage || 0) >= powerRequired);
-            
+
             for (const p of compatiblePsus) {
               for (const s of ssdList) {
                 for (const cs of caseList) {
@@ -111,6 +116,8 @@ export const pcBuilderService = {
                   if (total <= budget) {
                     results.push({ components: { cpu: c, mainboard: m, ram: r, vga: v, psu: p, ssd: s, case: cs }, totalPrice: total, budget });
                   }
+                  // Giới hạn tìm kiếm để tránh tràn bộ nhớ trên Vercel
+                  if (results.length > 500) break;
                 }
               }
             }

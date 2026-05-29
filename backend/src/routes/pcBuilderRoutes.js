@@ -11,17 +11,26 @@ import multer from 'multer';
 const router = express.Router();
 
 // Setup upload directory and multer storage for admin image uploads
-const uploadDir = path.join(process.cwd(), 'backend', 'public', 'proxied_images');
-if (!process.env.VERCEL) { try { fs.mkdirSync(uploadDir, { recursive: true }); } catch (e) { /* ignore */ } }
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.png';
-    const base = path.basename(file.originalname, ext).replace(/[^a-z0-9_-]/ig, '-').toLowerCase();
-    cb(null, `${base}-${Date.now()}${ext}`);
-  }
-});
-const upload = multer({ storage });
+let upload;
+if (process.env.VERCEL) {
+  // On Vercel, use memory storage to prevent filesystem write errors.
+  // You'll need to implement actual cloud upload logic (e.g., to Cloudinary/S3)
+  // in the route handlers after the file is in memory (req.file.buffer).
+  upload = multer({ storage: multer.memoryStorage() });
+} else {
+  // Local development: use disk storage
+  const uploadDir = path.join(process.cwd(), 'backend', 'public', 'proxied_images');
+  try { fs.mkdirSync(uploadDir, { recursive: true }); } catch (e) { /* ignore */ }
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname) || '.png';
+      const base = path.basename(file.originalname, ext).replace(/[^a-z0-9_-]/ig, '-').toLowerCase();
+      cb(null, `${base}-${Date.now()}${ext}`);
+    }
+  });
+  upload = multer({ storage });
+}
 
 // Verify components compatibility
 router.post('/compatibility', async (req, res) => {

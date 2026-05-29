@@ -4,6 +4,8 @@ import cors from 'cors';
 import path from 'path';
 import mongoose from 'mongoose';
 import dns from 'dns';
+import http from 'http';
+import { Server as IOServer } from 'socket.io';
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 import authRoutes from './src/routes/authRoutes.js';
@@ -98,8 +100,6 @@ export default app;
 
 // Local development server start (only if not on Vercel)
 if (!process.env.VERCEL) {
-  import http from 'http';
-  import { Server as IOServer } from 'socket.io';
   const PORT = process.env.PORT || 5000;
   const server = http.createServer(app); // Create server here for local
   const io = new IOServer(server, { cors: { origin: '*' } });

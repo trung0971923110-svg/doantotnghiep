@@ -4,11 +4,10 @@ import cors from 'cors';
 import path from 'path';
 import mongoose from 'mongoose';
 import dns from 'dns';
-import http from 'http';
-
 dns.setServers(['8.8.8.8', '8.8.4.4']);
-import { Server as IOServer } from 'socket.io';
+
 import authRoutes from './src/routes/authRoutes.js';
+import cameraRoutes from './src/routes/cameraRoutes.js';
 import inventoryRoutes from './src/routes/inventoryRoutes.js';
 import repairRoutes from './src/routes/repairRoutes.js';
 import pcBuilderRoutes from './src/routes/pcBuilderRoutes.js';
@@ -16,11 +15,6 @@ import cameraRoutes from './src/routes/cameraRoutes.js';
 import Product from './src/models/Product.js';
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-// Create HTTP server and attach Socket.IO for realtime notifications
-const server = http.createServer(app);
-const io = new IOServer(server, { cors: { origin: '*' } });
-app.set('io', io);
 
 // Enable CORS and JSON parsing
 app.use(cors());
@@ -38,9 +32,53 @@ app.use((req, res, next) => {
   next();
 });
 
+// MongoDB Connection Logic (optimized for Serverless)
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://trung0971923110_db_user:Trung2004@builsanphamtheoyeucau.j4ckpyc.mongodb.net/sanpham';
+
+let cachedDb = null;
+
+async function connectToDatabase() {
+  if (cachedDb && mongoose.connection.readyState === 1) {
+    console.log('✅ Using cached MongoDB connection.');
+    return cachedDb;
+  }
+  
+  if (mongoose.connection.readyState === 2 || mongoose.connection.readyState === 3) {
+    console.log('⏳ MongoDB connection is pending or disconnecting, waiting...');
+  }
+
+  console.log('⏳ Connecting to new MongoDB instance...');
+  const opts = {
+    bufferCommands: false, // Disable Mongoose buffering for serverless
+  };
+
+  try {
+    const conn = await mongoose.connect(MONGODB_URI, opts);
+    cachedDb = conn;
+    console.log(`✅ Connected to MongoDB at: ${MONGODB_URI}`);
+    return conn;
+  } catch (error) {
+    console.error('❌ MongoDB connection error:', error);
+    throw error; // Re-throw to be caught by the middleware
+  }
+}
+
+// Middleware để đảm bảo DB luôn kết nối trước khi chạy route (Phải đặt TRƯỚC các app.use routes)
+app.use(async (req, res, next) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      await connectToDatabase();
+    }
+    next();
+  } catch (err) {
+    console.error('Database connection error:', err);
+    res.status(500).json({ message: 'Không thể kết nối cơ sở dữ liệu' });
+  }
+});
+
 // Setup API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/inventory', inventoryRoutes);
+app.use('/api/auth', authRoutes); // Ensure these imports are at the top of the file
+app.use('/api/inventory', inventoryRoutes); // or within the route definitions if they depend on `app`
 app.use('/api/repairs', repairRoutes);
 app.use('/api/pc-builder', pcBuilderRoutes);
 app.use('/api/camera', cameraRoutes);
@@ -56,97 +94,51 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Lỗi hệ thống máy chủ xảy ra!', error: err.message });
 });
 
-// Connect to MongoDB (Atlas, local, or in-memory fallback for dev) and Start Server
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://trung0971923110_db_user:Trung2004@builsanphamtheoyeucau.j4ckpyc.mongodb.net/sanpham';
+// Export the app for Vercel
+export default app;
 
-let cachedDb = null;
+// Local development server start (only if not on Vercel)
+if (!process.env.VERCEL) {
+  import http from 'http';
+  import { Server as IOServer } from 'socket.io';
+  const PORT = process.env.PORT || 5000;
+  const server = http.createServer(app); // Create server here for local
+  const io = new IOServer(server, { cors: { origin: '*' } });
+  app.set('io', io); // Set io for local
 
-async function startServerWithUri(uri) {
-  if (cachedDb) return cachedDb;
-  
-  const opts = {
-    bufferCommands: false,
-  };
+  // Initial connection for local server
+  connectToDatabase().then(() => {
+    console.log(`✅ MongoDB Connected for local server`);
 
-  const conn = await mongoose.connect(uri, opts);
-  cachedDb = conn;
-  console.log(`✅ Connected to MongoDB at: ${uri}`);
+    // Try to establish a MongoDB change stream to broadcast external DB updates
+    try {
+      // Change streams chỉ chạy ở môi trường server truyền thống
+      const changeStream = Product.watch([], { fullDocument: 'updateLookup' });
+      changeStream.on('change', (change) => {
+        try {
+          if (!io) return;
+          if (change.operationType === 'update' || change.operationType === 'replace') {
+            const doc = change.fullDocument;
+            if (doc) io.emit('productUpdated', { id: String(doc._id), image: doc.image });
+          } else if (change.operationType === 'insert') {
+            const doc = change.fullDocument;
+            if (doc) io.emit('productInserted', { id: String(doc._id), image: doc.image });
+          }
+        } catch (e) { console.warn('changeStream emit error', e && e.message); }
+      });
+      changeStream.on('error', (err) => console.warn('Product changeStream error:', err && err.message));
+    } catch (e) {
+      console.warn('MongoDB change streams not available in this environment:', e && e.message);
+    }
 
-  if (process.env.VERCEL) {
-    return;
-  }
-
-  // Try to establish a MongoDB change stream to broadcast external DB updates
-  try {
-    // Change streams chỉ chạy ở môi trường server truyền thống
-    const changeStream = Product.watch([], { fullDocument: 'updateLookup' });
-    changeStream.on('change', (change) => {
-      try {
-        if (!io) return;
-        if (change.operationType === 'update' || change.operationType === 'replace') {
-          const doc = change.fullDocument;
-          if (doc) io.emit('productUpdated', { id: String(doc._id), image: doc.image });
-        } else if (change.operationType === 'insert') {
-          const doc = change.fullDocument;
-          if (doc) io.emit('productInserted', { id: String(doc._id), image: doc.image });
-        }
-      } catch (e) { console.warn('changeStream emit error', e && e.message); }
+    server.listen(PORT, () => {
+      console.log(`==================================================`);
+      console.log(`  PC Builder & Component Shop Server running on port ${PORT}`);
+      console.log(`  Health Check URL: http://localhost:${PORT}/api/health`);
+      console.log(`==================================================`);
     });
-    changeStream.on('error', (err) => console.warn('Product changeStream error:', err && err.message));
-  } catch (e) {
-    console.warn('MongoDB change streams not available in this environment:', e && e.message);
-  }
-  server.listen(PORT, () => {
-    console.log(`==================================================`);
-    console.log(`  PC Builder & Component Shop Server running on port ${PORT}`);
-    console.log(`  Health Check URL: http://localhost:${PORT}/api/health`);
-    console.log(`==================================================`);
+  }).catch(err => {
+    console.error('❌ Initial MongoDB connection failed for local server:', err.message);
+    process.exit(1);
   });
 }
-
-// Middleware để đảm bảo DB luôn kết nối trước khi chạy route (Quan trọng cho Vercel)
-app.use(async (req, res, next) => {
-  try {
-    if (mongoose.connection.readyState !== 1) {
-      await startServerWithUri(MONGODB_URI);
-    }
-    next();
-  } catch (err) {
-    console.error('Database connection error:', err);
-    res.status(500).json({ message: 'Không thể kết nối cơ sở dữ liệu' });
-  }
-});
-
-startServerWithUri(MONGODB_URI).catch(async (err) => {
-  console.warn('⚠️ Initial MongoDB connection failed:', err.message);
-  if (process.env.NODE_ENV === 'production') {
-    console.error('❌ Production requires a working MongoDB. Exiting.');
-    process.exit(1);
-  }
-
-  // Try an in-memory MongoDB for local development
-  try {
-    console.log('🧪 Falling back to in-memory MongoDB for development...');
-    const { MongoMemoryServer } = await import('mongodb-memory-server');
-    const mongod = await MongoMemoryServer.create();
-    const memUri = mongod.getUri();
-    await startServerWithUri(memUri);
-    // Seed the in-memory database so the frontend has products to display
-    try {
-      console.log('📦 Seeding in-memory database...');
-      const cp = await import('child_process');
-      const seedPath = new URL('./seedPC.js', import.meta.url).pathname;
-      const child = cp.spawn('node', [seedPath, memUri], { stdio: 'inherit' });
-      child.on('close', (code) => {
-        console.log(`📦 Seed process exited with code ${code}`);
-      });
-    } catch (seedErr) {
-      console.warn('⚠️ Failed to run seed script for in-memory DB:', seedErr.message);
-    }
-  } catch (memErr) {
-    console.error('❌ Failed to start in-memory MongoDB:', memErr.message);
-    process.exit(1);
-  }
-});
-
-export default app;

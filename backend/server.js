@@ -15,10 +15,27 @@ import cameraRoutes from './src/routes/cameraRoutes.js';
 import inventoryRoutes from './src/routes/inventoryRoutes.js';
 import repairRoutes from './src/routes/repairRoutes.js';
 import pcBuilderRoutes from './src/routes/pcBuilderRoutes.js';
+import aiRoutes from './src/routes/aiRoutes.js';
 import Product from './src/models/Product.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Cấu hình đường dẫn Frontend chính xác cho Render/Local
+const possiblePaths = [
+  path.resolve(process.cwd(), 'frontend', 'dist'),   // Root trên Render
+  path.resolve(__dirname, '..', 'frontend', 'dist'), // Anh em với backend
+  path.resolve(__dirname, 'frontend', 'dist')        // Trong backend (nếu có)
+];
+let frontendPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[0];
+
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
+
+if (!fs.existsSync(frontendPath)) {
+  console.log(`[Static Files] ❌ Cảnh báo: Không tìm thấy thư mục dist tại: ${frontendPath}`);
+} else {
+  console.log(`[Static Files] ✅ Đã tìm thấy thư mục dist tại: ${frontendPath}`);
+}
 
 const app = express();
 
@@ -26,11 +43,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve cached proxied images from backend/public/proxied_images
-// Serve entire public folder under /images (placeholder and other statics)
+// 1. PHỤC VỤ TỆP TĨNH (Không đi qua Middleware DB)
+app.use(express.static(frontendPath));
 app.use('/images', express.static(path.resolve(__dirname, 'public')));
-// Also keep a dedicated route for proxied images for compatibility
 app.use('/images/proxy', express.static(path.resolve(__dirname, 'public', 'proxied_images')));
+
+// 2. HEALTH CHECK (Nhanh, không cần DB)
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'ITSurv-SMS Backend is running smoothly!' });
+});
 
 // Request logger middleware
 app.use((req, res, next) => {
@@ -71,51 +92,25 @@ async function connectToDatabase() {
   }
 }
 
-// Đảm bảo middleware này nằm TRƯỚC các dòng app.use('/api/...')
-app.use(async (req, res, next) => {
+// 3. MIDDLEWARE KIỂM TRA DB (Chỉ áp dụng cho các route /api)
+app.use('/api', async (req, res, next) => {
   try {
     if (mongoose.connection.readyState !== 1) {
       await connectToDatabase();
     }
     next();
   } catch (err) {
-    console.error('Database connection error:', err);
-    res.status(500).json({ message: 'Không thể kết nối cơ sở dữ liệu' });
+    res.status(503).json({ message: 'Cơ sở dữ liệu đang bận, vui lòng thử lại sau', error: err.message });
   }
 });
 
-// Setup API Routes
-app.use('/api/auth', authRoutes); // Ensure these imports are at the top of the file
-app.use('/api/inventory', inventoryRoutes); // or within the route definitions if they depend on `app`
+// 4. CẤU HÌNH API ROUTES
+app.use('/api/auth', authRoutes);
+app.use('/api/inventory', inventoryRoutes);
 app.use('/api/repairs', repairRoutes);
 app.use('/api/pc-builder', pcBuilderRoutes);
 app.use('/api/camera', cameraRoutes);
-
-// Cấu hình phục vụ Frontend (React Build)
-// Trên Render, process.cwd() thường là /opt/render/project/src (thư mục gốc)
-const possiblePaths = [
-  path.resolve(process.cwd(), 'frontend', 'dist'), // Ưu tiên 1: Từ root dự án
-  path.resolve(__dirname, '..', 'frontend', 'dist'), // Ưu tiên 2: Cấp trên của backend
-  path.resolve(__dirname, 'frontend', 'dist')      // Dự phòng 3
-];
-
-let frontendPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[0];
-
-const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
-
-// Debugging thư mục tĩnh trên Render
-if (!fs.existsSync(frontendPath)) {
-  console.log(`[Static Files] ❌ Không tìm thấy thư mục dist tại: ${frontendPath}`);
-} else {
-  console.log(`[Static Files] ✅ Đã tìm thấy thư mục dist tại: ${frontendPath}`);
-}
-
-app.use(express.static(frontendPath));
-
-// Base route for status check
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'ITSurv-SMS Backend is running smoothly!' });
-});
+app.use('/api/ai', aiRoutes);
 
 // Catch-all route: Trả về index.html cho bất kỳ yêu cầu nào không khớp với API
 // Điều này rất quan trọng để React Router hoạt động bình thường trên Web
@@ -124,11 +119,7 @@ app.get('*', (req, res) => {
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    console.error(`[Static Files] ❌ KHÔNG TÌM THẤY index.html`);
-    console.log(`- Path đã thử: ${indexPath}`);
-    console.log(`- CWD hiện tại: ${process.cwd()}`);
-    console.log(`- __dirname: ${__dirname}`);
-    res.status(404).json({ 
+    res.status(404).json({
       message: "Frontend build not found.", 
       resolvedPath: indexPath,
       tip: "Kiểm tra lại lệnh Build Command trên Render Dashboard"

@@ -8,6 +8,7 @@ import PCBuilder from './pages/PCBuilder.jsx';
 import RepairService from './pages/RepairService.jsx';
 import CameraPlanner from './pages/CameraPlanner.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import AIChatBox from './pages/AIChatBox.jsx';
 
 export default function App() {
   const [page, setPage] = useState('home');
@@ -525,6 +526,9 @@ export default function App() {
           &copy; 2026 ITSurv-SMS. Hệ Thống Điều Phối Kỹ Thuật & Dịch Vụ.
         </p>
       </footer>
+
+      {/* AI Chatbox Widget */}
+      <AIChatBox />
 
       {/* Nút Zalo nổi ở góc màn hình */}
       <a 

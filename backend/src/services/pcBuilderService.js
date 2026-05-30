@@ -6,22 +6,24 @@ export const pcBuilderService = {
   checkCompatibility: async (parts) => {
     const issues = [];
     const details = {
-      socket:  { status: 'idle', message: 'Chưa đủ linh kiện để kiểm tra socket' },
-      ramType: { status: 'idle', message: 'Chưa đủ linh kiện để kiểm tra thế hệ RAM' },
-      power:   { status: 'idle', message: 'Chưa đủ linh kiện để kiểm tra công suất nguồn' }
+      socket:  { status: 'idle', message: '' },
+      ramType: { status: 'idle', message: '' },
+      power:   { status: 'idle', message: '' },
+      case:    { status: 'idle', message: '' },
+      vgaLength: { status: 'idle', message: '' }
     };
 
     const get = async (id) => id ? Product.findById(id).lean() : null;
 
-    const [cpu, mainboard, ram, vga, psu] = await Promise.all([
-      get(parts.cpu), get(parts.mainboard), get(parts.ram), get(parts.vga), get(parts.psu)
+    const [cpu, mainboard, ram, vga, psu, casePart] = await Promise.all([
+      get(parts.cpu), get(parts.mainboard), get(parts.ram), get(parts.vga), get(parts.psu), get(parts.case)
     ]);
 
     // 1. Socket: CPU vs Mainboard
     if (cpu && mainboard) {
       const cs = cpu.attributes?.socket, ms = mainboard.attributes?.socket;
       if (cs && ms) {
-        if (cs === ms) {
+        if (cs.replace(/\s/g, '').toUpperCase() === ms.replace(/\s/g, '').toUpperCase()) {
           details.socket = { status: 'ok', message: `Tương thích Socket (${cs})` };
         } else {
           details.socket = { status: 'error', message: `Xung đột Socket: CPU dùng ${cs} nhưng Mainboard dùng ${ms}!` };
@@ -34,7 +36,7 @@ export const pcBuilderService = {
     if (mainboard && ram) {
       const mr = mainboard.attributes?.ramType, rr = ram.attributes?.ramType;
       if (mr && rr) {
-        if (mr === rr) {
+        if (mr.toUpperCase() === rr.toUpperCase()) {
           details.ramType = { status: 'ok', message: `Tương thích thế hệ RAM (${mr})` };
         } else {
           details.ramType = { status: 'error', message: `Xung đột RAM: Mainboard hỗ trợ ${mr} nhưng thanh RAM là ${rr}!` };
@@ -54,6 +56,33 @@ export const pcBuilderService = {
       } else {
         details.power = { status: 'error', message: `Nguồn yếu: Cần tối thiểu ${required}W, PSU chỉ có ${pw}W!` };
         issues.push(details.power.message);
+      }
+    }
+
+    // 4. Case Size: Case vs Mainboard
+    if (casePart && mainboard) {
+      const bSize = mainboard.attributes?.size || 'ATX'; // Mặc định ATX nếu thiếu
+      const cSize = casePart.attributes?.size || 'ATX';
+      // Logic: Vỏ Micro-ATX không lắp được Mainboard ATX
+      if (cSize === 'Micro-ATX' && bSize === 'ATX') {
+        details.case = { status: 'error', message: `Xung đột kích thước: Vỏ Micro-ATX không lắp vừa Mainboard ATX!` };
+        issues.push(details.case.message);
+      } else {
+        details.case = { status: 'ok', message: `Kích thước Vỏ máy & Mainboard phù hợp` };
+      }
+    }
+
+    // 5. VGA Length: VGA vs Case
+    if (vga && casePart) {
+      const vLen = vga.attributes?.length;
+      const cMax = casePart.attributes?.vgaMaxLen;
+      if (vLen && cMax) {
+        if (vLen <= cMax) {
+          details.vgaLength = { status: 'ok', message: `Chiều dài VGA (${vLen}mm) phù hợp với Vỏ máy` };
+        } else {
+          details.vgaLength = { status: 'error', message: `VGA quá dài: VGA ${vLen}mm nhưng Vỏ máy chỉ hỗ trợ tối đa ${cMax}mm!` };
+          issues.push(details.vgaLength.message);
+        }
       }
     }
 

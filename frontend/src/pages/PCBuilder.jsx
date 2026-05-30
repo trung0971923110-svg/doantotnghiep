@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Sparkles, Check, AlertTriangle, HelpCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Sparkles, Check, AlertTriangle, HelpCircle, Printer, Download, FileText } from 'lucide-react';
 
 export default function PCBuilder() {
   const [activeTab, setActiveTab] = useState('auto'); // 'auto' or 'custom'
+  const reportRef = useRef();
   
   // States for Auto Build
   const [budget, setBudget] = useState(15000000);
@@ -26,19 +27,21 @@ export default function PCBuilder() {
     compatible: true,
     issues: [],
     details: {
-      socket: { status: 'idle', message: 'Chưa đủ linh kiện để kiểm tra socket' },
-      ramType: { status: 'idle', message: 'Chưa đủ linh kiện để kiểm tra thế hệ RAM' },
-      power: { status: 'idle', message: 'Chưa đủ linh kiện để kiểm tra công suất nguồn' }
+      socket: { status: 'idle', message: '' },
+      ramType: { status: 'idle', message: '' },
+      power: { status: 'idle', message: '' },      case: { status: 'idle', message: '' },
+      vgaLength: { status: 'idle', message: '' }
     }
   });
+  const [showCompatDetails, setShowCompatDetails] = useState(false);
   const [customPrice, setCustomPrice] = useState(0);
 
   // Load Inventory for custom builder
   useEffect(() => {
-    fetch('/api/inventory')
+    fetch('/api/pc-builder/products')
       .then(res => res.json())
       .then(data => setInventory(Array.isArray(data) ? data : []))
-      .catch(err => console.error("Error loading inventory:", err));
+      .catch(err => console.error("Error loading products:", err));
   }, []);
 
   // Recalculate compatibility and total price for custom builder
@@ -74,6 +77,50 @@ export default function PCBuilder() {
 
   }, [selectedParts, activeTab, inventory]);
 
+  // Tự động ẩn thông báo tương thích sau 5 giây nếu không có thao tác mới
+  useEffect(() => {
+    if (Object.values(selectedParts).every(v => v === '')) return;
+
+    setShowCompatDetails(true);
+    const timer = setTimeout(() => {
+      setShowCompatDetails(false);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [selectedParts]);
+
+  // Tự động reset Mainboard nếu thay đổi CPU không tương thích
+  useEffect(() => {
+    if (!selectedParts.cpu || !selectedParts.mainboard) return;
+
+    const cpu = inventory.find(p => (p.id || p._id) === selectedParts.cpu);
+    const mb = inventory.find(p => (p.id || p._id) === selectedParts.mainboard);
+
+    if (cpu && mb) {
+      const cs = cpu.attributes?.socket?.replace(/\s/g, '').toUpperCase();
+      const ms = mb.attributes?.socket?.replace(/\s/g, '').toUpperCase();
+      if (cs && ms && cs !== ms) {
+        setSelectedParts(prev => ({ ...prev, mainboard: '' }));
+      }
+    }
+  }, [selectedParts.cpu, inventory]);
+
+  // Tự động reset RAM nếu thay đổi Mainboard không tương thích chuẩn RAM
+  useEffect(() => {
+    if (!selectedParts.mainboard || !selectedParts.ram) return;
+
+    const mb = inventory.find(p => (p.id || p._id) === selectedParts.mainboard);
+    const ram = inventory.find(p => (p.id || p._id) === selectedParts.ram);
+
+    if (mb && ram) {
+      const mr = mb.attributes?.ramType?.toUpperCase();
+      const rr = ram.attributes?.ramType?.toUpperCase();
+      if (mr && rr && mr !== rr) {
+        setSelectedParts(prev => ({ ...prev, ram: '' }));
+      }
+    }
+  }, [selectedParts.mainboard, inventory]);
+
   const handleAutoBuild = (e) => {
     e.preventDefault();
     setAutoError('');
@@ -103,8 +150,13 @@ export default function PCBuilder() {
 
   const getByCategory = (category) => {
     if (!Array.isArray(inventory)) return [];
-    // Hỗ trợ cả trường stock (Kho) và stockQuantity (Sản phẩm)
-    return inventory.filter(item => item.category === category && (item.stock > 0 || item.stockQuantity > 0));
+    // So khớp không phân biệt hoa thường và hỗ trợ cả hai trường số lượng tồn kho
+    return inventory
+      .filter(item => 
+        item.category?.toLowerCase() === category.toLowerCase() && 
+        (item.stock > 0 || item.stockQuantity > 0)
+      )
+      .sort((a, b) => a.price - b.price); // Sắp xếp giá từ thấp đến cao
   };
 
   const getPartImage = (partId) => {
@@ -117,6 +169,49 @@ export default function PCBuilder() {
     return item.image;
   };
 
+  const getPerformanceLabel = (item) => {
+    if (!item) return '';
+    const cat = item.category?.toLowerCase();
+    const price = item.price;
+
+    if (cat === 'cpu') {
+      if (price < 3000000) return 'Office';
+      if (price < 8000000) return 'Gaming';
+      return 'Workstation';
+    }
+    if (cat === 'mainboard') {
+      if (price < 2500000) return 'Office';
+      if (price < 6000000) return 'Gaming';
+      return 'Workstation';
+    }
+    if (cat === 'ram') {
+      const cap = item.attributes?.capacity || 0;
+      if (cap <= 8) return 'Office';
+      if (cap <= 16) return 'Gaming';
+      return 'Workstation';
+    }
+    if (cat === 'vga') {
+      if (price < 5000000) return 'Office';
+      if (price < 15000000) return 'Gaming';
+      return 'Workstation';
+    }
+    if (price < 1000000) return 'Office';
+    if (price < 4000000) return 'Gaming';
+    return 'Workstation';
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleExportImage = async () => {
+    // Lưu ý: Tính năng này yêu cầu thư viện html2canvas
+    // Bạn cần chạy: npm install html2canvas --prefix frontend
+    alert("Tính năng xuất ảnh đang được chuẩn bị. \n\nMẹo: Bạn có thể dùng nút 'In / Lưu PDF' và chọn 'Save as Image' hoặc 'Save as PDF' trong mục máy in!");
+    // Nếu đã cài html2canvas, bạn có thể uncomment code sau:
+    /* const canvas = await html2canvas(reportRef.current); ... */
+  };
+
   const formatVND = (num) => {
     return new Intl.NumberFormat('vi-VN', { 
       style: 'currency', 
@@ -125,19 +220,85 @@ export default function PCBuilder() {
   };
 
   const renderCompatIcon = (status) => {
-    if (status === 'ok') return <Check size={18} style={{ color: 'var(--color-success)' }} />;
-    if (status === 'error') return <AlertTriangle size={18} style={{ color: 'var(--color-danger)' }} />;
+    if (status === 'ok') return <Check size={18} style={{ color: '#10b981' }} />;
+    if (status === 'error') return <AlertTriangle size={18} style={{ color: '#ef4444' }} />;
     return <HelpCircle size={18} style={{ color: 'var(--text-muted)' }} />;
   };
 
   const renderCompatClass = (status) => {
-    if (status === 'ok') return 'compat-log compat-log-ok';
-    if (status === 'error') return 'compat-log compat-log-error';
-    return 'compat-log compat-log-idle';
+    const animationClass = 'animate-slide-up';
+    if (status === 'ok') return `compat-log compat-log-ok ${animationClass}`;
+    if (status === 'error') return `compat-log compat-log-error ${animationClass}`;
+    return `compat-log compat-log-idle ${animationClass}`;
   };
 
   return (
     <div>
+      <style>
+        {`
+          @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-slide-up {
+            animation: slideUpFade 0.4s ease-out forwards;
+          }
+          .compat-log {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+          }
+          .compat-log-ok {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+          }
+          .compat-log-error {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ffffff;
+            border: 1px solid rgba(239, 68, 68, 0.5);
+          }
+          @keyframes pulse-success-glow {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+            70% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+          }
+          .btn-order-ready {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+            color: white !important;
+            font-size: 1.1rem !important;
+            letter-spacing: 0.5px;
+            animation: pulse-success-glow 2s infinite;
+            border: none !important;
+            transform: scale(1.02);
+          }
+          @media print {
+            body * { visibility: hidden; }
+            .print-area, .print-area * { visibility: visible; }
+            .print-area { 
+              position: absolute; 
+              left: 0; 
+              top: 0; 
+              width: 100%; 
+              background: white !important; 
+              color: black !important;
+              padding: 20px;
+            }
+            .glass-card { 
+              background: white !important; 
+              border: 1px solid #ccc !important; 
+              box-shadow: none !important;
+            }
+            .btn, .form-group, .page-header, .page-subtitle { display: none !important; }
+            .compat-log { color: black !important; background: #f0f0f0 !important; }
+          }
+        `}
+      </style>
       <div className="page-header">
         <h1 className="page-title">Phân Hệ Lắp Ráp PC Tự Động</h1>
         <p className="page-subtitle">Xây dựng cấu hình máy tính cá nhân hóa, tối ưu hiệu năng và tương thích 100%</p>
@@ -303,7 +464,9 @@ export default function PCBuilder() {
                 >
                   <option value="">-- Chọn CPU --</option>
                   {getByCategory('cpu').map((item, idx) => (
-                    <option key={item.id || item._id || idx} value={item.id || item._id}>{item.name} ({formatVND(item.price)})</option>
+                    <option key={item.id || item._id || idx} value={item.id || item._id}>
+                      [{getPerformanceLabel(item)}] {item.name} ({formatVND(item.price)})
+                    </option>
                   ))}
                 </select>
               </div>
@@ -325,9 +488,21 @@ export default function PCBuilder() {
                   style={{ flex: 1 }}
                 >
                   <option value="">-- Chọn Mainboard --</option>
-                  {getByCategory('mainboard').map((item, idx) => (
-                    <option key={item.id || item._id || idx} value={item.id || item._id}>{item.name} ({formatVND(item.price)})</option>
-                  ))}
+                  {(() => {
+                    const allMbs = getByCategory('mainboard');
+                    const selectedCpu = inventory.find(p => (p.id || p._id) === selectedParts.cpu);
+                    const cpuSocket = selectedCpu?.attributes?.socket?.replace(/\s/g, '').toUpperCase();
+
+                    const filteredMbs = cpuSocket 
+                      ? allMbs.filter(mb => mb.attributes?.socket?.replace(/\s/g, '').toUpperCase() === cpuSocket)
+                      : allMbs;
+
+                    return filteredMbs.map((item, idx) => (
+                      <option key={item.id || item._id || idx} value={item.id || item._id}>
+                        [{getPerformanceLabel(item)}] {item.name} ({formatVND(item.price)})
+                      </option>
+                    ));
+                  })()}
                 </select>
               </div>
             </div>
@@ -348,9 +523,21 @@ export default function PCBuilder() {
                   style={{ flex: 1 }}
                 >
                   <option value="">-- Chọn RAM --</option>
-                  {getByCategory('ram').map((item, idx) => (
-                    <option key={item.id || item._id || idx} value={item.id || item._id}>{item.name} ({formatVND(item.price)})</option>
-                  ))}
+                  {(() => {
+                    const allRams = getByCategory('ram');
+                    const selectedMb = inventory.find(p => (p.id || p._id) === selectedParts.mainboard);
+                    const mbRamType = selectedMb?.attributes?.ramType?.toUpperCase();
+
+                    const filteredRams = mbRamType 
+                      ? allRams.filter(ram => ram.attributes?.ramType?.toUpperCase() === mbRamType)
+                      : allRams;
+
+                    return filteredRams.map((item, idx) => (
+                      <option key={item.id || item._id || idx} value={item.id || item._id}>
+                        [{getPerformanceLabel(item)}] {item.name} ({formatVND(item.price)})
+                      </option>
+                    ));
+                  })()}
                 </select>
               </div>
             </div>
@@ -372,7 +559,9 @@ export default function PCBuilder() {
                 >
                   <option value="">-- Không sử dụng (Sử dụng GPU tích hợp) --</option>
                   {getByCategory('vga').map((item, idx) => (
-                    <option key={item.id || item._id || idx} value={item.id || item._id}>{item.name} ({formatVND(item.price)})</option>
+                    <option key={item.id || item._id || idx} value={item.id || item._id}>
+                      [{getPerformanceLabel(item)}] {item.name} ({formatVND(item.price)})
+                    </option>
                   ))}
                 </select>
               </div>
@@ -395,7 +584,9 @@ export default function PCBuilder() {
                 >
                   <option value="">-- Chọn Nguồn --</option>
                   {getByCategory('psu').map((item, idx) => (
-                    <option key={item.id || item._id || idx} value={item.id || item._id}>{item.name} ({formatVND(item.price)})</option>
+                    <option key={item.id || item._id || idx} value={item.id || item._id}>
+                      [{getPerformanceLabel(item)}] {item.name} ({formatVND(item.price)})
+                    </option>
                   ))}
                 </select>
               </div>
@@ -418,7 +609,9 @@ export default function PCBuilder() {
                 >
                   <option value="">-- Chọn SSD --</option>
                   {getByCategory('ssd').map((item, idx) => (
-                    <option key={item.id || item._id || idx} value={item.id || item._id}>{item.name} ({formatVND(item.price)})</option>
+                    <option key={item.id || item._id || idx} value={item.id || item._id}>
+                      [{getPerformanceLabel(item)}] {item.name} ({formatVND(item.price)})
+                    </option>
                   ))}
                 </select>
               </div>
@@ -441,7 +634,9 @@ export default function PCBuilder() {
                 >
                   <option value="">-- Chọn Vỏ máy --</option>
                   {getByCategory('case').map((item, idx) => (
-                    <option key={item.id || item._id || idx} value={item.id || item._id}>{item.name} ({formatVND(item.price)})</option>
+                    <option key={item.id || item._id || idx} value={item.id || item._id}>
+                      [{getPerformanceLabel(item)}] {item.name} ({formatVND(item.price)})
+                    </option>
                   ))}
                 </select>
               </div>
@@ -449,41 +644,90 @@ export default function PCBuilder() {
           </div>
 
           {/* Compatibility Checker Panel */}
-          <div className="glass-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div className="glass-card print-area" ref={reportRef} style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
               <h2 style={{ fontSize: '1.4rem', marginBottom: '1.5rem' }}>Báo Cáo Tương Thích & Giá Cả</h2>
 
-              <div style={{ marginBottom: '1.5rem' }}>
-                <div className={renderCompatClass(compatResult?.details?.socket?.status)}>
-                  {renderCompatIcon(compatResult?.details?.socket?.status)}
-                  <span>{compatResult?.details?.socket?.message}</span>
-                </div>
-                <div className={renderCompatClass(compatResult?.details?.ramType?.status)}>
-                  {renderCompatIcon(compatResult?.details?.ramType?.status)}
-                  <span>{compatResult?.details?.ramType?.message}</span>
-                </div>
-                <div className={renderCompatClass(compatResult?.details?.power?.status)}>
-                  {renderCompatIcon(compatResult?.details?.power?.status)}
-                  <span>{compatResult?.details?.power?.message}</span>
-                </div>
+              {/* Detailed list of selected components */}
+              <div style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {Object.entries(selectedParts).map(([cat, partId]) => {
+                  if (!partId) return null;
+                  const item = inventory.find(p => (p.id || p._id) === partId);
+                  if (!item) return null;
+                  return (
+                    <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: '1px solid var(--glass-border)' }}>
+                      <img src={getPartImage(partId)} alt={cat} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--secondary)', fontWeight: 700 }}>{cat}</div>
+                        <div style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-primary)' }}>
+                          {item.name}
+                        </div>
+                      </div>
+                      <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                        {formatVND(item.price)}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              {compatResult.issues.length > 0 && (
-                <div style={{ background: 'var(--color-danger-bg)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', padding: '1rem', color: '#fecaca', marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <AlertTriangle size={18} /> Cảnh báo xung đột phần cứng:
-                  </h3>
-                  <ul style={{ paddingLeft: '1.5rem', fontSize: '0.9rem' }}>
-                    {compatResult.issues.map((issue, idx) => <li key={idx}>{issue}</li>)}
-                  </ul>
-                </div>
-              )}
+              {showCompatDetails && (
+                <>
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    {compatResult?.details?.socket?.status !== 'idle' && (
+                      <div className={renderCompatClass(compatResult?.details?.socket?.status)}>
+                        {renderCompatIcon(compatResult?.details?.socket?.status)}
+                        <span>{compatResult?.details?.socket?.message}</span>
+                      </div>
+                    )}
+                    {compatResult?.details?.ramType?.status !== 'idle' && (
+                      <div className={renderCompatClass(compatResult?.details?.ramType?.status)}>
+                        {renderCompatIcon(compatResult?.details?.ramType?.status)}
+                        <span>{compatResult?.details?.ramType?.message}</span>
+                      </div>
+                    )}
+                    {compatResult?.details?.power?.status !== 'idle' && (
+                      <div className={renderCompatClass(compatResult?.details?.power?.status)}>
+                        {renderCompatIcon(compatResult?.details?.power?.status)}
+                        <span>{compatResult?.details?.power?.message}</span>
+                      </div>
+                    )}
+                    {compatResult?.details?.case?.status !== 'idle' && (
+                      <div className={renderCompatClass(compatResult?.details?.case?.status)}>
+                        {renderCompatIcon(compatResult?.details?.case?.status)}
+                        <span>{compatResult?.details?.case?.message}</span>
+                      </div>
+                    )}
+                    {compatResult?.details?.vgaLength?.status !== 'idle' && (
+                      <div className={renderCompatClass(compatResult?.details?.vgaLength?.status)}>
+                        {renderCompatIcon(compatResult?.details?.vgaLength?.status)}
+                        <span>{compatResult?.details?.vgaLength?.message}</span>
+                      </div>
+                    )}
+                  </div>
 
-              {compatResult.compatible && Object.values(selectedParts).some(v => v !== '') && (
-                <div className="compat-log compat-log-ok" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Check size={18} />
-                  <span>Các linh kiện đã chọn tương thích hoàn toàn. Bạn có thể đặt mua hoặc gửi cho quản trị viên cấu hình này.</span>
-                </div>
+                  {compatResult.issues.length > 0 && (
+                    <div 
+                      className="animate-slide-up"
+                      style={{ 
+                        background: 'rgba(239, 68, 68, 0.15)', border: '2px solid var(--color-danger)', borderRadius: '12px', padding: '1.25rem', color: '#fff', marginBottom: '1.5rem' 
+                      }}>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <AlertTriangle size={20} style={{ color: 'var(--color-danger)' }} /> PHÁT HIỆN XUNG ĐỘT LINH KIỆN:
+                      </h3>
+                      <ul style={{ paddingLeft: '1.5rem', fontSize: '0.9rem' }}>
+                        {compatResult.issues.map((issue, idx) => <li key={idx}>{issue}</li>)}
+                      </ul>
+                    </div>
+                  )}
+
+                  {compatResult.compatible && Object.values(selectedParts).some(v => v !== '') && (
+                    <div className="compat-log compat-log-ok animate-slide-up" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Check size={18} />
+                      <span>Các linh kiện đã chọn tương thích hoàn toàn. Bạn có thể đặt mua hoặc gửi cho quản trị viên cấu hình này.</span>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -492,14 +736,32 @@ export default function PCBuilder() {
                 <span style={{ color: 'var(--text-secondary)' }}>Tổng giá trị dự tính:</span>
                 <span style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--primary)' }}>{formatVND(customPrice)}</span>
               </div>
-              <button 
-                className="btn btn-primary" 
-                style={{ width: '100%' }} 
-                disabled={!compatResult.compatible || !selectedParts.cpu || !selectedParts.mainboard}
-                onClick={() => alert(`Cấu hình đã được lưu! Mã cấu hình tạm: CONFIG-${Math.floor(Math.random() * 90000) + 10000}. Bạn có thể gửi mã này cho nhân viên để lên đơn hàng.`)}
-              >
-                Lưu cấu hình đã ráp
-              </button>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <button 
+                  className={`btn ${compatResult.compatible && selectedParts.cpu && selectedParts.mainboard ? 'btn-order-ready' : 'btn-primary'}`} 
+                  style={{ width: '100%', transition: 'all 0.3s ease' }} 
+                  disabled={!selectedParts.cpu || !selectedParts.mainboard || !compatResult.compatible}
+                  onClick={() => alert(`Đơn hàng đã được khởi tạo! Mã đơn lắp ráp: PC-BUILD-${Math.floor(Math.random() * 90000) + 10000}. Nhân viên tư vấn sẽ liên hệ với bạn trong vòng 15 phút.`)}
+                >
+                  {compatResult.compatible && selectedParts.cpu && selectedParts.mainboard 
+                    ? 'ĐẶT MUA NGAY' 
+                    : 'Lưu cấu hình đã ráp'}
+                </button>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <button className="btn btn-secondary btn-sm" onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                    <Printer size={16} /> In / Lưu PDF
+                  </button>
+                  <button className="btn btn-secondary btn-sm" onClick={handleExportImage} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                    <Download size={16} /> Xuất File Ảnh
+                  </button>
+                </div>
+                
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', margin: 0 }}>
+                  * Xuất file để gửi cho nhân viên tư vấn hoặc lưu trữ cá nhân.
+                </p>
+              </div>
             </div>
           </div>
         </div>

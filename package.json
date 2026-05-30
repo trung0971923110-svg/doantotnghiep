@@ -7,7 +7,7 @@
     "backend": "npm run dev --prefix backend",
     "frontend": "npm run dev --prefix frontend",
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
-    "build": "npm install --prefix frontend && npm run build --prefix frontend && echo '--- BUILD FINISHED. LISTING FRONTEND/DIST: ---' && (ls -la frontend/dist || echo 'DIST NOT FOUND') && npm install --prefix backend --omit=dev"
+    "build": "npm install --prefix frontend && npm run build --prefix frontend && npm install --prefix backend --omit=dev && echo '--- DANH SÁCH FILE SAU KHI BUILD ---' && ls -R frontend/dist"
   },
   "dependencies": {
     "concurrently": "^8.2.2"

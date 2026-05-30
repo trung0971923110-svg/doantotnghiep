@@ -92,10 +92,16 @@ app.use('/api/pc-builder', pcBuilderRoutes);
 app.use('/api/camera', cameraRoutes);
 
 // Cấu hình phục vụ Frontend (React Build)
-const frontendPath = path.resolve(__dirname, '..', 'frontend', 'dist');
+let frontendPath = path.resolve(__dirname, '..', 'frontend', 'dist');
+
+// Kiểm tra thêm đường dẫn dự phòng (fallback) nếu chạy từ root
+if (!fs.existsSync(frontendPath)) {
+  frontendPath = path.resolve(process.cwd(), 'frontend', 'dist');
+}
+
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
 
-// Kiểm tra xem thư mục dist có tồn tại không để log cảnh báo
+// Debugging thư mục tĩnh trên Render
 if (!fs.existsSync(frontendPath)) {
   console.log(`[Static Files] ❌ Không tìm thấy thư mục dist tại: ${frontendPath}`);
 } else {
@@ -116,7 +122,10 @@ app.get('*', (req, res) => {
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    res.status(404).json({ 
+    // Log chi tiết lỗi ra console của Render để dễ debug
+    console.error(`[Static Files] ❌ File index.html không tồn tại tại: ${indexPath}`);
+    console.log(`[System Info] CWD: ${process.cwd()}, Dirname: ${__dirname}`);
+    res.status(404).json({
       message: "Frontend build not found.", 
       resolvedPath: indexPath,
       tip: "Kiểm tra lại lệnh Build Command trên Render Dashboard"

@@ -365,6 +365,7 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
             <h3 style={{ fontSize: '1.3rem', marginBottom: '0.75rem' }}>Lắp Ráp PC Tự Động</h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginBottom: '1.5rem' }}>
               Nhập ngân sách và nhu cầu sử dụng (Văn phòng, Gaming, Đồ họa). Hệ thống tự gợi ý cấu hình tương thích 100%, tự động kiểm tra Socket CPU, nguồn điện và thế hệ RAM.
+              Nhập ngân sách và nhu cầu sử dụng (Văn phòng, Gaming, Đồ họa). <strong>Cấu hình tương thích 100% (Đã kiểm tra Socket LGA1700, thế hệ RAM DDR4, Nguồn điện dư 550W).</strong>
             </p>
             <span style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
               Khám phá ngay &rarr;

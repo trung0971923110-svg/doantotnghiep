@@ -37,7 +37,7 @@ export default function PCBuilder() {
   useEffect(() => {
     fetch('/api/inventory')
       .then(res => res.json())
-      .then(data => setInventory(data))
+      .then(data => setInventory(Array.isArray(data) ? data : []))
       .catch(err => console.error("Error loading inventory:", err));
   }, []);
 
@@ -53,7 +53,7 @@ export default function PCBuilder() {
       const partId = selectedParts[cat];
       if (partId) {
         partsToCheck[cat] = partId;
-        const item = inventory.find(p => p.id === partId);
+        const item = inventory.find(p => (p.id || p._id) === partId);
         if (item) total += item.price;
       }
     });
@@ -65,8 +65,11 @@ export default function PCBuilder() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ parts: partsToCheck })
     })
-      .then(res => res.json())
-      .then(data => setCompatResult(data))
+      .then(res => {
+        if (!res.ok) throw new Error('Lỗi kiểm tra tương thích');
+        return res.json();
+      })
+      .then(data => { if (data && data.details) setCompatResult(data); })
       .catch(err => console.error("Error checking compatibility:", err));
 
   }, [selectedParts, activeTab, inventory]);
@@ -99,11 +102,26 @@ export default function PCBuilder() {
   };
 
   const getByCategory = (category) => {
-    return inventory.filter(item => item.category === category && item.stock > 0);
+    if (!Array.isArray(inventory)) return [];
+    // Hỗ trợ cả trường stock (Kho) và stockQuantity (Sản phẩm)
+    return inventory.filter(item => item.category === category && (item.stock > 0 || item.stockQuantity > 0));
+  };
+
+  const getPartImage = (partId) => {
+    if (!partId) return 'https://placehold.co/60x60?text=None';
+    const item = inventory.find(p => (p.id || p._id) === partId);
+    if (!item || !item.image) return 'https://placehold.co/60x60?text=Part';
+    if (item.image.startsWith('http')) {
+      return `/api/pc-builder/image?url=${encodeURIComponent(item.image)}`;
+    }
+    return item.image;
   };
 
   const formatVND = (num) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
+    return new Intl.NumberFormat('vi-VN', { 
+      style: 'currency', 
+      currency: 'VND', 
+      maximumFractionDigits: 0 }).format(num);
   };
 
   const renderCompatIcon = (status) => {
@@ -166,38 +184,15 @@ export default function PCBuilder() {
 
               <div className="form-group">
                 <label className="form-label">Nhu Cầu Sử Dụng</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                    <input 
-                      type="radio" 
-                      name="need" 
-                      value="office"
-                      checked={need === 'office'} 
-                      onChange={(e) => setNeed(e.target.value)}
-                    />
-                    <span>Văn phòng / Học tập (Tập trung CPU, RAM, không VGA)</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                    <input 
-                      type="radio" 
-                      name="need" 
-                      value="gaming"
-                      checked={need === 'gaming'} 
-                      onChange={(e) => setNeed(e.target.value)}
-                    />
-                    <span>Chơi Game giải trí (Tập trung VGA rời mạnh mẽ)</span>
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                    <input 
-                      type="radio" 
-                      name="need" 
-                      value="design"
-                      checked={need === 'design'} 
-                      onChange={(e) => setNeed(e.target.value)}
-                    />
-                    <span>Đồ họa / Render chuyên nghiệp (Tập trung CPU mạnh, nhiều RAM, VGA ổn định)</span>
-                  </label>
-                </div>
+                <select 
+                  className="form-select" 
+                  value={need} 
+                  onChange={(e) => setNeed(e.target.value)}
+                >
+                  <option value="office">Văn phòng / Học tập (Tập trung CPU, RAM, không VGA)</option>
+                  <option value="gaming">Chơi Game giải trí (Tập trung VGA rời mạnh mẽ)</option>
+                  <option value="design">Đồ họa / Render chuyên nghiệp (Tập trung CPU mạnh, nhiều RAM, VGA ổn định)</option>
+                </select>
               </div>
 
               <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loadingSuggest}>
@@ -294,106 +289,162 @@ export default function PCBuilder() {
             {/* CPU */}
             <div className="form-group">
               <label className="form-label">Bộ vi xử lý (CPU)</label>
-              <select 
-                className="form-select"
-                value={selectedParts.cpu}
-                onChange={(e) => setSelectedParts({ ...selectedParts, cpu: e.target.value })}
-              >
-                <option value="">-- Chọn CPU --</option>
-                {getByCategory('cpu').map(item => (
-                  <option key={item.id} value={item.id}>{item.name} ({formatVND(item.price)})</option>
-                ))}
-              </select>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <img 
+                  src={getPartImage(selectedParts.cpu)} 
+                  alt="CPU" 
+                  style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--glass-border)' }} 
+                />
+                <select 
+                  className="form-select"
+                  value={selectedParts.cpu}
+                  onChange={(e) => setSelectedParts({ ...selectedParts, cpu: e.target.value })}
+                  style={{ flex: 1 }}
+                >
+                  <option value="">-- Chọn CPU --</option>
+                  {getByCategory('cpu').map((item, idx) => (
+                    <option key={item.id || item._id || idx} value={item.id || item._id}>{item.name} ({formatVND(item.price)})</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Mainboard */}
             <div className="form-group">
               <label className="form-label">Bo mạch chủ (Mainboard)</label>
-              <select 
-                className="form-select"
-                value={selectedParts.mainboard}
-                onChange={(e) => setSelectedParts({ ...selectedParts, mainboard: e.target.value })}
-              >
-                <option value="">-- Chọn Mainboard --</option>
-                {getByCategory('mainboard').map(item => (
-                  <option key={item.id} value={item.id}>{item.name} ({formatVND(item.price)})</option>
-                ))}
-              </select>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <img 
+                  src={getPartImage(selectedParts.mainboard)} 
+                  alt="Mainboard" 
+                  style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--glass-border)' }} 
+                />
+                <select 
+                  className="form-select"
+                  value={selectedParts.mainboard}
+                  onChange={(e) => setSelectedParts({ ...selectedParts, mainboard: e.target.value })}
+                  style={{ flex: 1 }}
+                >
+                  <option value="">-- Chọn Mainboard --</option>
+                  {getByCategory('mainboard').map((item, idx) => (
+                    <option key={item.id || item._id || idx} value={item.id || item._id}>{item.name} ({formatVND(item.price)})</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* RAM */}
             <div className="form-group">
               <label className="form-label">Bộ nhớ trong (RAM)</label>
-              <select 
-                className="form-select"
-                value={selectedParts.ram}
-                onChange={(e) => setSelectedParts({ ...selectedParts, ram: e.target.value })}
-              >
-                <option value="">-- Chọn RAM --</option>
-                {getByCategory('ram').map(item => (
-                  <option key={item.id} value={item.id}>{item.name} ({formatVND(item.price)})</option>
-                ))}
-              </select>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <img 
+                  src={getPartImage(selectedParts.ram)} 
+                  alt="RAM" 
+                  style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--glass-border)' }} 
+                />
+                <select 
+                  className="form-select"
+                  value={selectedParts.ram}
+                  onChange={(e) => setSelectedParts({ ...selectedParts, ram: e.target.value })}
+                  style={{ flex: 1 }}
+                >
+                  <option value="">-- Chọn RAM --</option>
+                  {getByCategory('ram').map((item, idx) => (
+                    <option key={item.id || item._id || idx} value={item.id || item._id}>{item.name} ({formatVND(item.price)})</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* VGA */}
             <div className="form-group">
               <label className="form-label">Card màn hình (VGA)</label>
-              <select 
-                className="form-select"
-                value={selectedParts.vga}
-                onChange={(e) => setSelectedParts({ ...selectedParts, vga: e.target.value })}
-              >
-                <option value="">-- Không sử dụng (Sử dụng GPU tích hợp) --</option>
-                {getByCategory('vga').map(item => (
-                  <option key={item.id} value={item.id}>{item.name} ({formatVND(item.price)})</option>
-                ))}
-              </select>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <img 
+                  src={getPartImage(selectedParts.vga)} 
+                  alt="VGA" 
+                  style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--glass-border)' }} 
+                />
+                <select 
+                  className="form-select"
+                  value={selectedParts.vga}
+                  onChange={(e) => setSelectedParts({ ...selectedParts, vga: e.target.value })}
+                  style={{ flex: 1 }}
+                >
+                  <option value="">-- Không sử dụng (Sử dụng GPU tích hợp) --</option>
+                  {getByCategory('vga').map((item, idx) => (
+                    <option key={item.id || item._id || idx} value={item.id || item._id}>{item.name} ({formatVND(item.price)})</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* PSU */}
             <div className="form-group">
               <label className="form-label">Bộ nguồn (PSU)</label>
-              <select 
-                className="form-select"
-                value={selectedParts.psu}
-                onChange={(e) => setSelectedParts({ ...selectedParts, psu: e.target.value })}
-              >
-                <option value="">-- Chọn Nguồn --</option>
-                {getByCategory('psu').map(item => (
-                  <option key={item.id} value={item.id}>{item.name} ({formatVND(item.price)})</option>
-                ))}
-              </select>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <img 
+                  src={getPartImage(selectedParts.psu)} 
+                  alt="PSU" 
+                  style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--glass-border)' }} 
+                />
+                <select 
+                  className="form-select"
+                  value={selectedParts.psu}
+                  onChange={(e) => setSelectedParts({ ...selectedParts, psu: e.target.value })}
+                  style={{ flex: 1 }}
+                >
+                  <option value="">-- Chọn Nguồn --</option>
+                  {getByCategory('psu').map((item, idx) => (
+                    <option key={item.id || item._id || idx} value={item.id || item._id}>{item.name} ({formatVND(item.price)})</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* SSD */}
             <div className="form-group">
               <label className="form-label">Ổ cứng (SSD)</label>
-              <select 
-                className="form-select"
-                value={selectedParts.ssd}
-                onChange={(e) => setSelectedParts({ ...selectedParts, ssd: e.target.value })}
-              >
-                <option value="">-- Chọn SSD --</option>
-                {getByCategory('ssd').map(item => (
-                  <option key={item.id} value={item.id}>{item.name} ({formatVND(item.price)})</option>
-                ))}
-              </select>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <img 
+                  src={getPartImage(selectedParts.ssd)} 
+                  alt="SSD" 
+                  style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--glass-border)' }} 
+                />
+                <select 
+                  className="form-select"
+                  value={selectedParts.ssd}
+                  onChange={(e) => setSelectedParts({ ...selectedParts, ssd: e.target.value })}
+                  style={{ flex: 1 }}
+                >
+                  <option value="">-- Chọn SSD --</option>
+                  {getByCategory('ssd').map((item, idx) => (
+                    <option key={item.id || item._id || idx} value={item.id || item._id}>{item.name} ({formatVND(item.price)})</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Case */}
             <div className="form-group">
               <label className="form-label">Vỏ máy (Case)</label>
-              <select 
-                className="form-select"
-                value={selectedParts.case}
-                onChange={(e) => setSelectedParts({ ...selectedParts, case: e.target.value })}
-              >
-                <option value="">-- Chọn Vỏ máy --</option>
-                {getByCategory('case').map(item => (
-                  <option key={item.id} value={item.id}>{item.name} ({formatVND(item.price)})</option>
-                ))}
-              </select>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <img 
+                  src={getPartImage(selectedParts.case)} 
+                  alt="Case" 
+                  style={{ width: '60px', height: '60px', objectFit: 'cover', borderRadius: '8px', border: '1px solid var(--glass-border)' }} 
+                />
+                <select 
+                  className="form-select"
+                  value={selectedParts.case}
+                  onChange={(e) => setSelectedParts({ ...selectedParts, case: e.target.value })}
+                  style={{ flex: 1 }}
+                >
+                  <option value="">-- Chọn Vỏ máy --</option>
+                  {getByCategory('case').map((item, idx) => (
+                    <option key={item.id || item._id || idx} value={item.id || item._id}>{item.name} ({formatVND(item.price)})</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 
@@ -403,17 +454,17 @@ export default function PCBuilder() {
               <h2 style={{ fontSize: '1.4rem', marginBottom: '1.5rem' }}>Báo Cáo Tương Thích & Giá Cả</h2>
 
               <div style={{ marginBottom: '1.5rem' }}>
-                <div className={renderCompatClass(compatResult.details.socket.status)}>
-                  {renderCompatIcon(compatResult.details.socket.status)}
-                  <span>{compatResult.details.socket.message}</span>
+                <div className={renderCompatClass(compatResult?.details?.socket?.status)}>
+                  {renderCompatIcon(compatResult?.details?.socket?.status)}
+                  <span>{compatResult?.details?.socket?.message}</span>
                 </div>
-                <div className={renderCompatClass(compatResult.details.ramType.status)}>
-                  {renderCompatIcon(compatResult.details.ramType.status)}
-                  <span>{compatResult.details.ramType.message}</span>
+                <div className={renderCompatClass(compatResult?.details?.ramType?.status)}>
+                  {renderCompatIcon(compatResult?.details?.ramType?.status)}
+                  <span>{compatResult?.details?.ramType?.message}</span>
                 </div>
-                <div className={renderCompatClass(compatResult.details.power.status)}>
-                  {renderCompatIcon(compatResult.details.power.status)}
-                  <span>{compatResult.details.power.message}</span>
+                <div className={renderCompatClass(compatResult?.details?.power?.status)}>
+                  {renderCompatIcon(compatResult?.details?.power?.status)}
+                  <span>{compatResult?.details?.power?.message}</span>
                 </div>
               </div>
 

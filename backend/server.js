@@ -39,7 +39,8 @@ app.use((req, res, next) => {
 });
 
 // MongoDB Connection Logic (optimized for Serverless)
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://trung0971923110_db_user:Trung2004@builsanphamtheoyeucau.j4ckpyc.mongodb.net/sanpham';
+const ATLAS_URI = 'mongodb+srv://trung0971923110_db_user:Trung2004@builsanphamtheoyeucau.j4ckpyc.mongodb.net/sanpham';
+const MONGODB_URI = process.env.MONGODB_URI || ATLAS_URI;
 
 let cachedDb = null;
 
@@ -61,7 +62,8 @@ async function connectToDatabase() {
   try {
     const conn = await mongoose.connect(MONGODB_URI, opts);
     cachedDb = conn;
-    console.log(`✅ Connected to MongoDB at: ${MONGODB_URI}`);
+    const maskedUri = MONGODB_URI.includes('@') ? MONGODB_URI.split('@')[1] : MONGODB_URI;
+    console.log(`✅ Connected to MongoDB at: ${maskedUri}`);
     return conn;
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);

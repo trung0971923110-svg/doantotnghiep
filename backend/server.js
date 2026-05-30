@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import fs from 'fs';
 import path from 'path';
 import mongoose from 'mongoose';
 import dns from 'dns';
@@ -90,6 +91,13 @@ app.use('/api/camera', cameraRoutes);
 
 // Cấu hình phục vụ Frontend (React Build)
 const frontendPath = path.resolve(__dirname, '..', 'frontend', 'dist');
+
+// Kiểm tra xem thư mục dist có tồn tại không để log cảnh báo
+if (!fs.existsSync(frontendPath)) {
+  console.warn(`⚠️ Cảnh báo: Thư mục Frontend Build không tìm thấy tại: ${frontendPath}`);
+  console.warn(`👉 Đảm bảo bạn đã chạy 'npm run build' trong thư mục frontend.`);
+}
+
 app.use(express.static(frontendPath));
 
 // Base route for status check
@@ -100,7 +108,12 @@ app.get('/api/health', (req, res) => {
 // Catch-all route: Trả về index.html cho bất kỳ yêu cầu nào không khớp với API
 // Điều này rất quan trọng để React Router hoạt động bình thường trên Web
 app.get('*', (req, res) => {
-  res.sendFile(path.join(frontendPath, 'index.html'));
+  const indexPath = path.join(frontendPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send("Frontend build not found. Please check Render Build Command.");
+  }
 });
 
 // Error handling middleware

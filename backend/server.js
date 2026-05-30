@@ -84,9 +84,20 @@ app.use('/api/repairs', repairRoutes);
 app.use('/api/pc-builder', pcBuilderRoutes);
 app.use('/api/camera', cameraRoutes);
 
+// Cấu hình phục vụ Frontend (React Build)
+// Giả định thư mục frontend nằm cùng cấp với backend
+const frontendPath = path.join(process.cwd(), 'frontend', 'dist');
+app.use(express.static(frontendPath));
+
 // Base route for status check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'ITSurv-SMS Backend is running smoothly!' });
+});
+
+// Catch-all route: Trả về index.html cho bất kỳ yêu cầu nào không khớp với API
+// Điều này rất quan trọng để React Router hoạt động bình thường trên Web
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // Error handling middleware

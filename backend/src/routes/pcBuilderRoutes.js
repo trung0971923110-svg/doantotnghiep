@@ -8,6 +8,10 @@ import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
+
 const router = express.Router();
 
 // Setup upload directory and multer storage for admin image uploads
@@ -19,8 +23,8 @@ if (process.env.VERCEL) {
   upload = multer({ storage: multer.memoryStorage() });
 } else {
   // Local development: use disk storage
-  const uploadDir = path.join(process.cwd(), 'backend', 'public', 'proxied_images');
-  try { fs.mkdirSync(uploadDir, { recursive: true }); } catch (e) { /* ignore */ }
+  const uploadDir = path.resolve(__dirname, '../../public/proxied_images');
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
   const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
     filename: (req, file, cb) => {

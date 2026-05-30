@@ -91,11 +91,13 @@ app.use('/api/camera', cameraRoutes);
 
 // Cấu hình phục vụ Frontend (React Build)
 const frontendPath = path.resolve(__dirname, '..', 'frontend', 'dist');
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER;
 
 // Kiểm tra xem thư mục dist có tồn tại không để log cảnh báo
 if (!fs.existsSync(frontendPath)) {
-  console.warn(`⚠️ Cảnh báo: Thư mục Frontend Build không tìm thấy tại: ${frontendPath}`);
-  console.warn(`👉 Đảm bảo bạn đã chạy 'npm run build' trong thư mục frontend.`);
+  console.log(`[Static Files] ❌ Không tìm thấy thư mục dist tại: ${frontendPath}`);
+} else {
+  console.log(`[Static Files] ✅ Đã tìm thấy thư mục dist tại: ${frontendPath}`);
 }
 
 app.use(express.static(frontendPath));
@@ -112,7 +114,11 @@ app.get('*', (req, res) => {
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
   } else {
-    res.status(404).send("Frontend build not found. Please check Render Build Command.");
+    res.status(404).json({ 
+      message: "Frontend build not found.", 
+      resolvedPath: indexPath,
+      tip: "Kiểm tra lại lệnh Build Command trên Render Dashboard"
+    });
   }
 });
 

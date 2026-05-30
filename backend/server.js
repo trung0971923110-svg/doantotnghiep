@@ -5,6 +5,7 @@ import path from 'path';
 import mongoose from 'mongoose';
 import dns from 'dns';
 import http from 'http';
+import { fileURLToPath } from 'url';
 import { Server as IOServer } from 'socket.io';
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
@@ -15,6 +16,9 @@ import repairRoutes from './src/routes/repairRoutes.js';
 import pcBuilderRoutes from './src/routes/pcBuilderRoutes.js';
 import Product from './src/models/Product.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 
 // Enable CORS and JSON parsing
@@ -23,9 +27,9 @@ app.use(express.json());
 
 // Serve cached proxied images from backend/public/proxied_images
 // Serve entire public folder under /images (placeholder and other statics)
-app.use('/images', express.static(path.join(process.cwd(), 'backend', 'public')));
+app.use('/images', express.static(path.resolve(__dirname, 'public')));
 // Also keep a dedicated route for proxied images for compatibility
-app.use('/images/proxy', express.static(path.join(process.cwd(), 'backend', 'public', 'proxied_images')));
+app.use('/images/proxy', express.static(path.resolve(__dirname, 'public', 'proxied_images')));
 
 // Request logger middleware
 app.use((req, res, next) => {
@@ -85,8 +89,7 @@ app.use('/api/pc-builder', pcBuilderRoutes);
 app.use('/api/camera', cameraRoutes);
 
 // Cấu hình phục vụ Frontend (React Build)
-// Giả định thư mục frontend nằm cùng cấp với backend
-const frontendPath = path.join(process.cwd(), 'frontend', 'dist');
+const frontendPath = path.resolve(__dirname, '..', 'frontend', 'dist');
 app.use(express.static(frontendPath));
 
 // Base route for status check

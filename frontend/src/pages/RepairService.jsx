@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Wrench, Phone, Search, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Wrench, Phone, Search, FileText, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function RepairService() {
   const [activeMode, setActiveMode] = useState('book'); // 'book' or 'track'
@@ -37,10 +37,16 @@ export default function RepairService() {
         issueDescription
       })
     })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) {
+          return res.json().then(err => { throw new Error(err.message || 'Lỗi đặt lịch sửa chữa'); });
+        }
+        return res.json();
+      })
       .then(data => {
         setBookedTicket(data);
         setBookingLoading(false);
+        setSearchError('');
         // Clear form
         setCustomerName('');
         setCustomerPhone('');
@@ -50,6 +56,7 @@ export default function RepairService() {
       .catch(err => {
         console.error("Booking error:", err);
         setBookingLoading(false);
+        setSearchError(err.message);
       });
   };
 
@@ -62,7 +69,13 @@ export default function RepairService() {
 
     let url = '';
     if (searchId) {
-      url = `/api/repairs/${searchId.trim().toUpperCase()}`;
+      const code = searchId.trim();
+      // Nếu bắt đầu bằng "REP-" thì gọi endpoint tìm theo mã code, ngược lại tìm theo ID
+      if (code.toUpperCase().startsWith('REP-')) {
+        url = `/api/repairs/code/${code.toUpperCase()}`;
+      } else {
+        url = `/api/repairs/${code}`;
+      }
     } else if (searchPhone) {
       url = `/api/repairs/customer/${searchPhone.trim()}`;
     } else {
@@ -124,6 +137,17 @@ export default function RepairService() {
 
   return (
     <div>
+      <style>
+        {`
+          @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+          .animate-spin { animation: spin 1s linear infinite; }
+          .booking-form-loading {
+            opacity: 0.6;
+            pointer-events: none;
+            transition: all 0.4s ease;
+          }
+        `}
+      </style>
       <div className="page-header">
         <h1 className="page-title">Tiếp Nhận & Theo Dõi Sửa Chữa</h1>
         <p className="page-subtitle">Đặt lịch sửa chữa trực tuyến và giám sát quy trình xử lý lỗi thời gian thực</p>
@@ -158,7 +182,7 @@ export default function RepairService() {
               </p>
               
               <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--glass-border)', borderRadius: '8px', padding: '1.5rem', textAlign: 'left', marginBottom: '2rem' }}>
-                <p style={{ marginBottom: '0.5rem' }}><strong>Mã Phiếu Hẹn:</strong> <span style={{ color: 'var(--secondary)', fontWeight: 700, fontSize: '1.1rem' }}>{bookedTicket.id}</span></p>
+                <p style={{ marginBottom: '0.5rem' }}><strong>Mã Phiếu Hẹn:</strong> <span style={{ color: 'var(--secondary)', fontWeight: 700, fontSize: '1.1rem' }}>{bookedTicket.repairCode}</span></p>
                 <p style={{ marginBottom: '0.5rem' }}><strong>Khách Hàng:</strong> {bookedTicket.customerName} - {bookedTicket.customerPhone}</p>
                 <p style={{ marginBottom: '0.5rem' }}><strong>Thiết Bị:</strong> {getDeviceLabel(bookedTicket.deviceType)} ({bookedTicket.deviceName})</p>
                 <p style={{ marginBottom: '0.5rem' }}><strong>Lỗi Báo:</strong> {bookedTicket.issueDescription}</p>
@@ -169,7 +193,7 @@ export default function RepairService() {
                 <button 
                   className="btn btn-primary"
                   onClick={() => {
-                    setSearchId(bookedTicket.id);
+                    setSearchId(bookedTicket.repairCode);
                     setActiveMode('track');
                     setSelectedTicket(bookedTicket);
                     setSearchResults([bookedTicket]);
@@ -185,7 +209,7 @@ export default function RepairService() {
           ) : (
             <div className="glass-card">
               <h2 style={{ fontSize: '1.4rem', marginBottom: '1.5rem', textAlign: 'center' }}>Đăng Ký Phiếu Sửa Chữa</h2>
-              <form onSubmit={handleBook}>
+              <form onSubmit={handleBook} className={bookingLoading ? 'booking-form-loading' : ''}>
                 <div className="grid-2">
                   <div className="form-group">
                     <label className="form-label">Họ & Tên khách hàng</label>
@@ -249,8 +273,22 @@ export default function RepairService() {
                   ></textarea>
                 </div>
 
-                <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={bookingLoading}>
-                  {bookingLoading ? 'Đang gửi thông tin...' : 'Gửi Yêu Cầu Sửa Chữa'}
+              {searchError && activeMode === 'book' && (
+                <div style={{ marginBottom: '1rem', color: 'var(--color-danger)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-danger-bg)', padding: '0.75rem', borderRadius: '8px' }}>
+                  <AlertCircle size={18} />
+                  <span>{searchError}</span>
+                </div>
+              )}
+
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} 
+                  disabled={bookingLoading}
+                >
+                  {bookingLoading ? (
+                    <><Loader2 size={20} className="animate-spin" /> Đang gửi thông tin...</>
+                  ) : 'Gửi Yêu Cầu Sửa Chữa'}
                 </button>
               </form>
             </div>
@@ -311,19 +349,19 @@ export default function RepairService() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {searchResults.map(ticket => (
                     <div 
-                      key={ticket.id} 
+                      key={ticket._id} 
                       onClick={() => setSelectedTicket(ticket)}
                       style={{ 
                         padding: '1rem', 
                         borderRadius: '8px', 
-                        border: selectedTicket?.id === ticket.id ? '1px solid var(--primary)' : '1px solid var(--glass-border)',
-                        background: selectedTicket?.id === ticket.id ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255,255,255,0.01)',
+                        border: selectedTicket?._id === ticket._id ? '1px solid var(--primary)' : '1px solid var(--glass-border)',
+                        background: selectedTicket?._id === ticket._id ? 'rgba(99, 102, 241, 0.08)' : 'rgba(255,255,255,0.01)',
                         cursor: 'pointer',
                         transition: 'all 0.2s'
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <span style={{ fontWeight: 700, color: 'var(--secondary)' }}>{ticket.id}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--secondary)' }}>{ticket.repairCode}</span>
                         {getStatusBadge(ticket.status)}
                       </div>
                       <p style={{ fontSize: '0.95rem', fontWeight: 500 }}>{getDeviceLabel(ticket.deviceType)}: {ticket.deviceName}</p>
@@ -339,7 +377,7 @@ export default function RepairService() {
                 <div className="glass-card">
                   <div style={{ borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                      <h3 style={{ fontSize: '1.3rem', fontWeight: 700 }}>Phiếu Sửa Chữa: {selectedTicket.id}</h3>
+                      <h3 style={{ fontSize: '1.3rem', fontWeight: 700 }}>Phiếu Sửa Chữa: {selectedTicket.repairCode}</h3>
                       {getStatusBadge(selectedTicket.status)}
                     </div>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', marginTop: '0.5rem' }}>
@@ -354,43 +392,43 @@ export default function RepairService() {
                   
                   <div className="timeline">
                     {/* Received */}
-                    <div className={`timeline-item ${selectedTicket.history.some(h => h.status === 'received') ? 'completed' : ''} ${selectedTicket.status === 'received' ? 'active' : ''}`}>
+                    <div className={`timeline-item ${selectedTicket.history?.some(h => h.status === 'received') ? 'completed' : ''} ${selectedTicket.status === 'received' ? 'active' : ''}`}>
                       <div className="timeline-badge"></div>
                       <div className="timeline-content">
                         <div className="timeline-date">
-                          {formatDate(selectedTicket.history.find(h => h.status === 'received')?.timestamp) || 'Đang cập nhật'}
+                          {formatDate(selectedTicket.history?.find(h => h.status === 'received')?.timestamp) || 'Đang cập nhật'}
                         </div>
                         <div className="timeline-title">Đã Tiếp Nhận Thiết Bị</div>
                         <div className="timeline-desc">
-                          {selectedTicket.history.find(h => h.status === 'received')?.note || 'Hệ thống đã ghi nhận phiếu đăng ký dịch vụ của khách hàng.'}
+                          {selectedTicket.history?.find(h => h.status === 'received')?.note || 'Hệ thống đã ghi nhận phiếu đăng ký dịch vụ của khách hàng.'}
                         </div>
                       </div>
                     </div>
 
                     {/* Inspecting */}
-                    <div className={`timeline-item ${selectedTicket.history.some(h => h.status === 'inspecting') ? 'completed' : ''} ${selectedTicket.status === 'inspecting' ? 'active' : ''}`}>
+                    <div className={`timeline-item ${selectedTicket.history?.some(h => h.status === 'inspecting') ? 'completed' : ''} ${selectedTicket.status === 'inspecting' ? 'active' : ''}`}>
                       <div className="timeline-badge"></div>
                       <div className="timeline-content">
                         <div className="timeline-date">
-                          {formatDate(selectedTicket.history.find(h => h.status === 'inspecting')?.timestamp)}
+                          {formatDate(selectedTicket.history?.find(h => h.status === 'inspecting')?.timestamp)}
                         </div>
                         <div className="timeline-title">Đang Kiểm Tra & Báo Giá</div>
                         <div className="timeline-desc">
-                          {selectedTicket.history.find(h => h.status === 'inspecting')?.note || 'Đang chờ kỹ thuật viên kiểm tra lỗi phần cứng và đề xuất linh kiện thay thế.'}
+                          {selectedTicket.history?.find(h => h.status === 'inspecting')?.note || 'Đang chờ kỹ thuật viên kiểm tra lỗi phần cứng và đề xuất linh kiện thay thế.'}
                         </div>
                       </div>
                     </div>
 
                     {/* Fixing */}
-                    <div className={`timeline-item ${selectedTicket.history.some(h => h.status === 'fixing') ? 'completed' : ''} ${selectedTicket.status === 'fixing' ? 'active' : ''}`}>
+                    <div className={`timeline-item ${selectedTicket.history?.some(h => h.status === 'fixing') ? 'completed' : ''} ${selectedTicket.status === 'fixing' ? 'active' : ''}`}>
                       <div className="timeline-badge"></div>
                       <div className="timeline-content">
                         <div className="timeline-date">
-                          {formatDate(selectedTicket.history.find(h => h.status === 'fixing')?.timestamp)}
+                          {formatDate(selectedTicket.history?.find(h => h.status === 'fixing')?.timestamp)}
                         </div>
                         <div className="timeline-title">Đang Tiến Hành Sửa Chữa / Thay Thế</div>
                         <div className="timeline-desc">
-                          {selectedTicket.history.find(h => h.status === 'fixing')?.note || 'Đang chờ tiến hành sửa chữa lỗi hệ thống hoặc thay thế các linh kiện bị hỏng.'}
+                          {selectedTicket.history?.find(h => h.status === 'fixing')?.note || 'Đang chờ tiến hành sửa chữa lỗi hệ thống hoặc thay thế các linh kiện bị hỏng.'}
                         </div>
                         
                         {/* Display parts used if any */}
@@ -415,11 +453,11 @@ export default function RepairService() {
                       <div className="timeline-badge"></div>
                       <div className="timeline-content">
                         <div className="timeline-date">
-                          {formatDate(selectedTicket.history.find(h => h.status === 'completed')?.timestamp)}
+                          {formatDate(selectedTicket.history?.find(h => h.status === 'completed')?.timestamp)}
                         </div>
                         <div className="timeline-title">Đã Sửa Xong & Bàn Giao</div>
                         <div className="timeline-desc">
-                          {selectedTicket.history.find(h => h.status === 'completed')?.note || 'Thiết bị sẽ được kỹ thuật viên hoàn tất sửa chữa, kiểm tra cẩn thận trước khi bàn giao lại.'}
+                          {selectedTicket.history?.find(h => h.status === 'completed')?.note || 'Thiết bị sẽ được kỹ thuật viên hoàn tất sửa chữa, kiểm tra cẩn thận trước khi bàn giao lại.'}
                         </div>
                       </div>
                     </div>

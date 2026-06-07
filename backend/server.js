@@ -17,6 +17,8 @@ import repairRoutes from './src/routes/repairRoutes.js';
 import pcBuilderRoutes from './src/routes/pcBuilderRoutes.js';
 import aiRoutes from './src/routes/aiRoutes.js';
 import Product from './src/models/Product.js';
+import orderRoutes from './src/routes/orderRoutes.js';
+import cartRoutes from './src/routes/cartRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -111,6 +113,8 @@ app.use('/api/repairs', repairRoutes);
 app.use('/api/pc-builder', pcBuilderRoutes);
 app.use('/api/camera', cameraRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/orders', orderRoutes);
 
 // Catch-all route: Trả về index.html cho bất kỳ yêu cầu nào không khớp với API
 // Điều này rất quan trọng để React Router hoạt động bình thường trên Web
@@ -138,7 +142,7 @@ export default app;
 
 // Local development server start (only if not on Vercel)
 if (!process.env.VERCEL) {
-  const PORT = process.env.PORT || 5000;
+  const PORT = process.env.PORT || 5001;
   const server = http.createServer(app); // Create server here for local
   const io = new IOServer(server, { cors: { origin: '*' } });
   app.set('io', io); // Set io for local

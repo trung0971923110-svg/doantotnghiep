@@ -3,14 +3,17 @@ import Product from '../models/Product.js';
 
 // Khởi tạo Gemini AI
 let genAIInstance = null;
+let lastUsedKey = null;
 
 const getModel = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
+  // Sử dụng khóa mới bạn cung cấp làm fallback mặc định
+  const apiKey = process.env.GEMINI_API_KEY || 'AIzaSyBvQiLrldj_cmVHTk6S15iBNQwQvDyVOZU';
   if (!apiKey) return null;
 
-  // Khởi tạo lại mỗi lần để đảm bảo dùng đúng key từ env
-  if (!genAIInstance) {
+  // Tự động khởi tạo lại nếu mã khóa thay đổi (từ .env hoặc code)
+  if (!genAIInstance || lastUsedKey !== apiKey) {
     genAIInstance = new GoogleGenerativeAI(apiKey);
+    lastUsedKey = apiKey;
     console.log(`[AI] ✅ Gemini initialized, key prefix: ${apiKey.substring(0, 10)}...`);
   }
 
@@ -58,7 +61,8 @@ Câu hỏi: "${message}"`;
       if (error.message && error.message.includes('API_KEY_INVALID')) {
         return "API Key không hợp lệ. Vui lòng kiểm tra lại GEMINI_API_KEY trong file .env.";
       }
-      return "Hệ thống tư vấn AI đang gặp sự cố kỹ thuật. Bạn vui lòng liên hệ hotline 0332605465 để được hỗ trợ ngay nhé!";
+      // Return detailed error for debugging
+      return `Lỗi AI: ${error.message || 'Unknown error'}`;
     }
   }
 };

@@ -11,7 +11,7 @@ const fmt = (v) => {
 
 const getPlaceholder = (name) => `https://placehold.co/400x300?text=${encodeURIComponent(name || 'Product')}`;
 
-export default function ProductDetail({ productId, setPage, productUpdateSignal, lastUpdatedProduct }) {
+export default function ProductDetail({ productId, setPage, productUpdateSignal, lastUpdatedProduct, onAddToCart }) {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -78,8 +78,13 @@ export default function ProductDetail({ productId, setPage, productUpdateSignal,
           </div>
 
           <div style={{ marginTop: '1.25rem' }}>
-            <button className="btn btn-primary">Thêm vào giỏ</button>
-            <button className="btn btn-secondary" style={{ marginLeft: '0.5rem' }}>Mua ngay</button>
+            <button className="btn btn-primary" onClick={() => {
+              if (onAddToCart) onAddToCart({ productId: product._id, name: product.name, price: product.price, qty: 1, image: product.image || getPlaceholder(product.name) });
+            }}>Thêm vào giỏ</button>
+              <button className="btn btn-secondary" style={{ marginLeft: '0.5rem' }} onClick={() => {
+              if (onAddToCart) onAddToCart({ productId: product._id, name: product.name, price: product.price, qty: 1, image: product.image || getPlaceholder(product.name) });
+              setPage('checkout');
+            }}>Mua ngay</button>
           </div>
         </div>
       </div>

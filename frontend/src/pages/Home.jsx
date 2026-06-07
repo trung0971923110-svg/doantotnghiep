@@ -431,21 +431,13 @@ export default function Home({ setPage, selectedCategory, setSelectedCategory, s
         <div style={{ flex: '1 1 280px', background: 'rgba(7, 9, 14, 0.4)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
           <h3 style={{ fontSize: '1.1rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Clock size={20} style={{ color: 'var(--secondary)' }} />
-            Tài Khoản Đăng Nhập Demo
+            Liên hệ & Hỗ trợ
           </h3>
-          <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingLeft: 0, fontSize: '0.9rem' }}>
-            <li style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.4rem' }}>
-              <span style={{ fontWeight: 600, color: 'var(--primary)' }}>Chủ Cửa Hàng (Admin):</span><br />
-              Tài khoản: <code style={{ color: 'var(--text-primary)' }}>admin</code> / Mật khẩu: <code style={{ color: 'var(--text-primary)' }}>admin123</code>
-            </li>
-            <li>
-              <span style={{ fontWeight: 600, color: 'var(--secondary)' }}>Kỹ Thuật Viên:</span><br />
-              Tài khoản: <code style={{ color: 'var(--text-primary)' }}>tech1</code> / Mật khẩu: <code style={{ color: 'var(--text-primary)' }}>tech123</code>
-            </li>
-          </ul>
-          <button className="btn btn-secondary btn-sm" style={{ width: '100%', marginTop: '0.75rem' }} onClick={() => setPage('dashboard')}>
-            Vào Trang Quản Trị Portal
-          </button>
+          <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>
+            <p style={{ marginBottom: '0.5rem' }}>Bạn cần hỗ trợ đặt hàng hoặc sửa chữa? Liên hệ chúng tôi:</p>
+            <p><strong>Hotline:</strong> 0912 345 678</p>
+            <p><strong>Email:</strong> support@yourshop.vn</p>
+          </div>
         </div>
       </section>
     </div>

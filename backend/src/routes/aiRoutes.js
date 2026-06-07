@@ -31,7 +31,7 @@ router.get('/test', async (req, res) => {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
     const result = await model.generateContent('Nói "xin chào" bằng tiếng Việt trong 3 từ');
     const text = result.response.text();
     return res.json({

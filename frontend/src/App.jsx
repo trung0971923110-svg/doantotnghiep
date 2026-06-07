@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { io as ioClient } from 'socket.io-client';
-import { Cpu, Wrench, Video, LayoutDashboard, Home as HomeIcon, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Phone, Mail, MapPin, Clock, MessageCircle } from 'lucide-react';
+import { Cpu, Wrench, Video, Home as HomeIcon, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Phone, Mail, MapPin, Clock, MessageCircle, ShoppingCart, Trash2 } from 'lucide-react';
 import Home from './pages/Home.jsx';
 import SuggestionDetail from './pages/SuggestionDetail.jsx';
 import ProductDetail from './pages/ProductDetail.jsx';
 import PCBuilder from './pages/PCBuilder.jsx';
 import RepairService from './pages/RepairService.jsx';
 import CameraPlanner from './pages/CameraPlanner.jsx';
-import Dashboard from './pages/Dashboard.jsx';
 import AIChatBox from './pages/AIChatBox.jsx';
+import Checkout from './pages/Checkout.jsx';
+import OrderSuccess from './pages/OrderSuccess.jsx';
 
 export default function App() {
   const [page, setPage] = useState('home');
-  const [user, setUser] = useState(null);
+    const [cart, setCart] = useState([]);
+    const [showCart, setShowCart] = useState(false);
+    const [cartPulse, setCartPulse] = useState(false);
+    const [zoom, setZoom] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [selectedBrand, setSelectedBrand] = useState('all');
@@ -64,17 +68,7 @@ export default function App() {
   const [productUpdateSignal, setProductUpdateSignal] = useState(0);
   const [lastUpdatedProduct, setLastUpdatedProduct] = useState(null);
 
-  // Restore user session if saved
-  useEffect(() => {
-    const savedUser = localStorage.getItem('itsurv_user');
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        localStorage.removeItem('itsurv_user');
-      }
-    }
-  }, []);
+  // No login: site is customer-facing only
 
   // Setup Socket.IO to receive realtime product updates
   useEffect(() => {
@@ -88,15 +82,104 @@ export default function App() {
     return () => { socket.disconnect(); };
   }, []);
 
-  // Sync user state with localStorage
-  const handleSetUser = (u) => {
-    setUser(u);
-    if (u) {
-      localStorage.setItem('itsurv_user', JSON.stringify(u));
-    } else {
-      localStorage.removeItem('itsurv_user');
-    }
+  // Load cart from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('itsurv_cart');
+      if (raw) setCart(JSON.parse(raw));
+    } catch (e) { console.warn('Failed to load cart', e); }
+  }, []);
+
+  // Load zoom preference
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('itsurv_zoom');
+      if (raw) setZoom(Number(raw));
+    } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+    try { localStorage.setItem('itsurv_zoom', String(zoom)); } catch (e) {}
+  }, [zoom]);
+
+  const zoomIn = () => setZoom(z => Math.min(1.6, Math.round((z + 0.1) * 100) / 100));
+  const zoomOut = () => setZoom(z => Math.max(0.6, Math.round((z - 0.1) * 100) / 100));
+  const zoomReset = () => setZoom(1);
+
+  const [userEmail, setUserEmail] = useState(null);
+  const [userIdToken, setUserIdToken] = useState(null);
+
+  // Save cart to server for logged-in user (requires ID token)
+  const saveCartToServer = async (idToken) => {
+    if (!idToken) return;
+    try {
+      await fetch('/api/cart/save', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ items: cart })
+      });
+    } catch (e) { console.warn('Failed to save cart to server', e); }
   };
+
+  const loadCartFromServer = async (idToken) => {
+    if (!idToken) return;
+    try {
+      const res = await fetch(`/api/cart/load`, { headers: { Authorization: `Bearer ${idToken}` } });
+      if (!res.ok) return;
+      const payload = await res.json();
+      if (payload && Array.isArray(payload.cart)) {
+        const merged = [...cart];
+        payload.cart.forEach(sit => {
+          const idx = merged.findIndex(m => (m.productId && sit.productId && String(m.productId) === String(sit.productId)) || (m.name === sit.name));
+          if (idx >= 0) merged[idx].qty = (merged[idx].qty || 0) + (sit.qty || 1);
+          else merged.push(sit);
+        });
+        setCart(merged);
+        if (payload.userEmail) setUserEmail(payload.userEmail);
+      }
+    } catch (e) { console.warn('Failed to load cart from server', e); }
+  };
+
+  // Persist cart
+  useEffect(() => {
+    try { localStorage.setItem('itsurv_cart', JSON.stringify(cart)); } catch (e) {}
+    if (userIdToken) saveCartToServer(userIdToken);
+  }, [cart]);
+
+  // When user signs in, load their server cart
+  useEffect(() => {
+    if (userIdToken) loadCartFromServer(userIdToken);
+  }, [userIdToken]);
+
+  // Google Identity initialization
+  useEffect(() => {
+    const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    if (!GOOGLE_CLIENT_ID) return;
+    const existing = document.getElementById('gis-script');
+    if (existing) return;
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.id = 'gis-script';
+    s.async = true;
+    s.defer = true;
+    s.onload = () => {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: (resp) => {
+            if (resp && resp.credential) {
+              setUserIdToken(resp.credential);
+              // backend will return userEmail in load response
+              loadCartFromServer(resp.credential);
+            }
+          }
+        });
+      } catch (e) { console.warn('Google Identity init failed', e); }
+    };
+    document.head.appendChild(s);
+    return () => { /* leave script */ };
+  }, []);
+
+  // removed login state management
 
   // Hàm xử lý chung khi chọn danh mục để đảm bảo luôn quay về trang chủ sản phẩm
   const handleCategoryClick = (cat, brand = 'all', series = 'all') => {
@@ -136,7 +219,21 @@ export default function App() {
           productUpdateSignal={productUpdateSignal} lastUpdatedProduct={lastUpdatedProduct} selectedPrice={selectedPrice} 
         />;
       case 'product':
-        return <ProductDetail productId={selectedProductId} setPage={setPage} productUpdateSignal={productUpdateSignal} lastUpdatedProduct={lastUpdatedProduct} />;
+        return <ProductDetail productId={selectedProductId} setPage={setPage} productUpdateSignal={productUpdateSignal} lastUpdatedProduct={lastUpdatedProduct} onAddToCart={(item) => {
+          // merge into cart
+          setCart(prev => {
+            const copy = [...prev];
+            const idx = copy.findIndex(c => c.productId && item.productId && String(c.productId) === String(item.productId));
+            if (idx >= 0) {
+              copy[idx].qty = (copy[idx].qty || 0) + (item.qty || 1);
+            } else {
+              copy.push(item);
+            }
+            return copy;
+          });
+          setCartPulse(true);
+          setTimeout(() => setCartPulse(false), 360);
+        }} />;
       case 'suggestion':
         return <SuggestionDetail suggestion={selectedSuggestion} setPage={setPage} />;
       case 'pc-builder':
@@ -145,15 +242,18 @@ export default function App() {
         return <RepairService />;
       case 'camera-planner':
         return <CameraPlanner />;
-      case 'dashboard':
-        return <Dashboard user={user} setUser={handleSetUser} />;
+      case 'checkout':
+        return <Checkout cart={cart} setCart={setCart} setPage={setPage} />;
+      case 'order-success':
+        return <OrderSuccess setPage={setPage} />;
+      
       default:
         return <Home setPage={setPage} />;
     }
   };
 
   return (
-    <div className="app-container" style={{ padding: 0, margin: 0, maxWidth: 'none', width: '100%', overflowX: 'hidden' }}>
+    <div className="app-container" style={{ padding: 0, margin: 0, maxWidth: 'none', overflowX: 'hidden', transform: `scale(${zoom})`, transformOrigin: '0 0', width: `${100/zoom}%`, transition: 'transform 160ms ease, width 160ms ease' }}>
       {/* Premium Sticky Header Navigation */}
       <header 
         className="header-glass"
@@ -204,18 +304,59 @@ export default function App() {
         </nav>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {user ? (
-            <button className="auth-btn" onClick={() => setPage('dashboard')}>
-              <LayoutDashboard size={16} /> Dashboard Portal
-            </button>
-          ) : (
-            <button className="auth-btn" onClick={() => setPage('dashboard')}>
-              Đăng Nhập
-            </button>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: '0.5rem' }}>
+          <button className="btn btn-ghost" title="Thu nhỏ trang" onClick={zoomOut} style={{ padding: '6px' }}>-</button>
+          <button className="btn btn-ghost" title="Reset phóng to" onClick={zoomReset} style={{ padding: '6px' }}>100%</button>
+          <button className="btn btn-ghost" title="Phóng to trang" onClick={zoomIn} style={{ padding: '6px' }}>+</button>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative' }}>
+          <button aria-label="Giỏ hàng" title="Giỏ hàng" className="btn btn-ghost" style={{ padding: '6px', position: 'relative', transition: 'transform 200ms cubic-bezier(.2,.8,.2,1)' }} onClick={() => setShowCart(s => !s)}>
+            <div style={{ width: cartPulse ? 48 : 40, height: cartPulse ? 48 : 40, borderRadius: 999, background: 'rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: cartPulse ? 'scale(1.15)' : 'scale(1)', transition: 'transform 220ms cubic-bezier(.2,.8,.2,1)' }}>
+              <ShoppingCart size={cartPulse ? 26 : 22} />
+            </div>
+            {cart.length > 0 && (
+              <span style={{ position: 'absolute', top: -6, right: -6, background: 'var(--color-danger)', color: 'white', borderRadius: 999, padding: '2px 6px', fontSize: '0.65rem', fontWeight: 800, boxShadow: '0 1px 2px rgba(0,0,0,0.12)' }}>{cart.length}</span>
+            )}
+          </button>
+
           <button aria-label="Toggle price sidebar" title="Ẩn/Hiện lọc giá" className="btn btn-ghost" style={{ padding: '6px' }} onClick={() => setRightSidebarVisible(v => !v)}>
             {rightSidebarVisible ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
           </button>
+
+          {showCart && (
+            <div style={{ position: 'fixed', top: '58px', right: '15px', width: '320px', maxHeight: '60vh', overflowY: 'auto', background: 'rgba(7,9,14,0.95)', border: '1px solid var(--glass-border)', borderRadius: '10px', padding: '0.75rem', zIndex: 60 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <strong>Giỏ hàng</strong>
+                <button className="btn btn-ghost btn-sm" onClick={() => { setCart([]); }} title="Xóa tất cả">
+                  <Trash2 size={16} />
+                </button>
+              </div>
+              {cart.length === 0 ? (
+                <div style={{ color: 'var(--text-muted)', padding: '1.25rem', textAlign: 'center' }}>Giỏ hàng trống</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {cart.map((it, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700 }}>{it.name}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{it.qty} x {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(it.price)}</div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-end' }}>
+                        <div style={{ fontWeight: 700 }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(it.qty * it.price)}</div>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setCart(c => c.filter((_, i) => i !== idx))}>Xóa</button>
+                      </div>
+                    </div>
+                  ))}
+                  <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0.5rem 0' }}></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800 }}>
+                    <span>Tổng</span>
+                    <span>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(cart.reduce((s, it) => s + it.qty * it.price, 0))}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         </div>
       </header>
 

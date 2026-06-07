@@ -67,16 +67,22 @@ export default function AIChatBox() {
           {/* Messages area */}
           <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {messages.map((m, i) => (
-              <div key={i} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
-                <div style={{ 
-                  padding: '0.75rem', borderRadius: '12px', fontSize: '0.9rem',
-                  background: m.role === 'user' ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
-                  color: 'white', border: m.role === 'ai' ? '1px solid var(--glass-border)' : 'none'
+                <div key={i} style={{
+                  alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
+                  maxWidth: '85%'
                 }}>
-                  {m.text}
+                  <div style={{
+                    padding: '0.75rem',
+                    borderRadius: '12px',
+                    fontSize: '0.9rem',
+                    background: m.role === 'user' ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                    color: m.role === 'user' ? 'white' : (m.text.match(/không tương thích|không lắp vừa|xung đột/i) ? '#ff4500' : 'white'),
+                    border: m.role === 'ai' ? '1px solid var(--glass-border)' : 'none'
+                  }}>
+                    {m.text}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
             {loading && (
               <div style={{ alignSelf: 'flex-start', padding: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 AI đang gõ...

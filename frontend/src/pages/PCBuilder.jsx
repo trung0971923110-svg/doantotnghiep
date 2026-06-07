@@ -77,16 +77,13 @@ export default function PCBuilder() {
 
   }, [selectedParts, activeTab, inventory]);
 
-  // Tự động ẩn thông báo tương thích sau 5 giây nếu không có thao tác mới
+  // Hiển thị báo cáo tương thích khi có linh kiện được chọn và không tự ẩn
   useEffect(() => {
-    if (Object.values(selectedParts).every(v => v === '')) return;
-
-    setShowCompatDetails(true);
-    const timer = setTimeout(() => {
+    if (Object.values(selectedParts).every(v => v === '')) {
       setShowCompatDetails(false);
-    }, 5000);
-
-    return () => clearTimeout(timer);
+      return;
+    }
+    setShowCompatDetails(true);
   }, [selectedParts]);
 
   // Tự động reset Mainboard nếu thay đổi CPU không tương thích
@@ -259,10 +256,8 @@ export default function PCBuilder() {
             border: 1px solid rgba(16, 185, 129, 0.3);
           }
           .compat-log-error {
-            background: rgba(239, 68, 68, 0.15);
-            color: #ffffff;
-            border: 1px solid rgba(239, 68, 68, 0.5);
-          }
+            background: rgba(139, 0, 0, 0.15); color: #8b0000; border: 1px solid rgba(139, 0, 0, 0.5);
+            }
           @keyframes pulse-success-glow {
             0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
             70% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
@@ -710,8 +705,8 @@ export default function PCBuilder() {
                     <div 
                       className="animate-slide-up"
                       style={{ 
-                        background: 'rgba(239, 68, 68, 0.15)', border: '2px solid var(--color-danger)', borderRadius: '12px', padding: '1.25rem', color: '#fff', marginBottom: '1.5rem' 
-                      }}>
+                          background: 'rgba(139, 0, 0, 0.15)', border: '2px solid var(--color-danger)', borderRadius: '12px', padding: '1.25rem', color: '#8b0000', marginBottom: '1.5rem' 
+                        }}>
                       <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <AlertTriangle size={20} style={{ color: 'var(--color-danger)' }} /> PHÁT HIỆN XUNG ĐỘT LINH KIỆN:
                       </h3>
